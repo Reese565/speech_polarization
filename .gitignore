@@ -1,0 +1,4 @@
+
+# Ignore checkpoint files
+.*  # ignore all hidden files and folders
+!/.gitignore  
