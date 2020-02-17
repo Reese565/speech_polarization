@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 import os
-from multiprocessing import  Pool
-from itertools import product
+from multiprocessing import Pool, cpu_count
+from itertools import product, chain
 
 
 # google storage bucket data paths
@@ -13,14 +13,17 @@ HB_PATH = os.path.join(DATA_PATH, "hein-bound/")
 BY_SPEAKER = "byspeaker_2gram_%s.txt"
 SPEAKER_MAP = "%s_SpeakerMap.txt"
 
+# constants
+N_CORES = cpu_count()
 
 # import master vocaulary with phrase classifications
 phrases_classes = pd.read_csv(os.path.join(DATA_PATH, "vocabulary/master_list.txt"), sep = "|")
 
 
 
+
 # helper function to parallelize operations
-def parallelize_dataframe(df, func, args, n_cores=2):
+def parallelize_dataframe(df, func, n_cores=N_CORES):
     df_split = np.array_split(df, n_cores)
     pool = Pool(n_cores)
     df = pd.concat(pool.map(func, df_split))
@@ -63,7 +66,7 @@ def select_phrase_classes(session_phrase_df, classes, ngram = 'bigram'):
 
 def mentions(df):
     """Takes in a dataframe with phrase 
-        and occurance count columns and returns flat list 
+        and occurence count columns and returns flat list 
         with multiples of the bigram phrases by occurrence"""
     
     def multiply_phrases(row):
@@ -87,10 +90,47 @@ def mentions(df):
     return df
 
 
+def make_doc(df):
+    """
+    Takes a data frame belonging to a single speaker 
+    and returns a dictionary containg their phrases and their speakerid  
+    """
+    # Assumes every document in the df has the same speaker
+    doc = {'speakerid': df.speakerid.values[0], 
+           'phrase': list(chain.from_iterable(mentions(df).phrase))}
+    
+    return doc
+
+
+
+def group_docs(df_list):
+    """
+    Takes a list of speaker data frames and returns a list of
+    speaker dictionary documents
+    """
+    docs = list(map(lambda df: make_doc(df), df_list))
+    return docs
+
+
 
 def speaker_docs(valid_phrase_df):
-    """"""
-    phrase_counts = parallelize_dataframe(valid_phrase_df, mentions)
-    speaker_phrases = phrase_counts.groupby('speakerid')['phrase'].sum()
+    """
+    Takes a dataframe of phrases and returns a list of speaker documents
+    one speaker document is a dictionary of the form {speakerid, phrase}
+    where phrase is the list of phrases
+    """
+    # create list of dataframes by speaker
+    speakers = valid_phrase_df.groupby('speakerid')
+    speaker_df_list = list(map(lambda k: speakers.get_group(k), speakers.groups.keys()))
     
-    return speaker_phrases
+    # Split speaker df list 
+    num_partitions = N_CORES
+    speaker_split = [speaker_df_list[i::num_partitions] for i in range(num_partitions)]
+    
+    # compute in parallel
+    pool = Pool(N_CORES)
+    docs = list(chain.from_iterable(pool.map(group_docs, speaker_split)))
+    pool.close()
+    pool.join()
+    
+    return docs
