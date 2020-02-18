@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 import os
+
 from multiprocessing import Pool, cpu_count
 from itertools import product, chain
+from gensim.corpora import Dictionary
 
 
 # google storage bucket data paths
@@ -19,6 +21,8 @@ N_CORES = cpu_count()
 # import master vocaulary with phrase classifications
 phrases_classes = pd.read_csv(os.path.join(DATA_PATH, "vocabulary/master_list.txt"), sep = "|")
 
+# create gensim dictionary out of master vocabulary
+global_dct = Dictionary([list(phrases_classes.phrase.values)])
 
 
 
@@ -43,9 +47,7 @@ def session_phrases(session):
     speaker_map_df = pd.read_csv(os.path.join(HB_PATH, SPEAKER_MAP % session), sep = "|")
     
     # generating valid session bigrams
-    session_phrase_df = (speaker_phrases
-                   .merge(phrases_classes, how = "inner", on ="phrase")
-                  )
+    session_phrase_df = (speaker_phrases.merge(phrases_classes, how = "inner", on ="phrase"))
     
     return speaker_map_df, session_phrase_df
 
@@ -121,7 +123,7 @@ def speaker_docs(valid_phrase_df):
     """
     # create list of dataframes by speaker
     speakers = valid_phrase_df.groupby('speakerid')
-    speaker_df_list = list(map(lambda k: speakers.get_group(k), speakers.groups.keys()))
+    speaker_df_list = [speakers.get_group(k) for k in speakers.groups.keys()]
     
     # Split speaker df list 
     num_partitions = N_CORES
@@ -134,3 +136,45 @@ def speaker_docs(valid_phrase_df):
     pool.join()
     
     return docs
+
+
+def encode_phrases(df, dct=global_dct):
+    """
+    Returns the phrase codes and counts of a dataframe according to the given dictionary
+    """
+    phrase_codes = list(map(lambda p: dct.token2id[p], df['phrase'].values))
+    phrase_counts = list(zip(phrase_codes, df['count'].values))
+    
+    return phrase_counts
+
+
+def make_bow_doc(df):
+    """
+    Takes a dataframe belonging to a single speaker with the fields 'speakerid' and 'phrase_code'
+    and returns a dictionary containg their phrases and their speakerid  
+    """
+    # Assumes every document in the df has the same speaker
+    bow_doc = {'speakerid': df.speakerid.values[0], 
+               'phrase_code': list(df.phrsase_code.values)}
+    
+    return bow_doc
+
+
+
+def speaker_bow_docs(df, dct=global_dct):
+    """
+    Takes a datafame with at least the field 'speakerid', 'phrase' and 'count'.
+    Returns a list of dictionaries (bow documents encoded by speaker)
+    """
+    
+    # Compute phrase encoding - count tuples
+    df['phrase_code'] = encode_phrases(df, global_dct)
+    
+    # create list of dataframes by speaker
+    speakers = df.groupby('speakerid')
+    speaker_df_list = [speakers.get_group(k) for k in speakers.groups.keys()]
+    
+    # get bow doc by speaker
+    bow_docs = list(map(make_bow_doc, speaker_df_list))
+    
+    return bow_docs
