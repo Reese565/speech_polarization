@@ -155,7 +155,7 @@ def make_bow_doc(df):
     """
     # Assumes every document in the df has the same speaker
     bow_doc = {'speakerid': df.speakerid.values[0], 
-               'phrase_code': list(df.phrsase_code.values)}
+               'phrase_code': list(df.phrase_code.values)}
     
     return bow_doc
 
@@ -166,9 +166,8 @@ def speaker_bow_docs(df, dct=global_dct):
     Takes a datafame with at least the field 'speakerid', 'phrase' and 'count'.
     Returns a list of dictionaries (bow documents encoded by speaker)
     """
-    
     # Compute phrase encoding - count tuples
-    df['phrase_code'] = encode_phrases(df, global_dct)
+    df['phrase_code'] = encode_phrases(df, dct)
     
     # create list of dataframes by speaker
     speakers = df.groupby('speakerid')
