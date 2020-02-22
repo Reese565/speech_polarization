@@ -1,3 +1,12 @@
+#=================================#
+#=*= Session Speaker Assemlbly =*=#
+#=================================#
+
+# Methods for:
+# - handling speaker n_grams per session
+# - processing for LDA
+
+
 import pandas as pd
 import numpy as np
 import os
