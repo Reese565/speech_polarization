@@ -4,10 +4,17 @@
 
 # Methods for preprocessing the speech text
 
-
+# Dependencies
 import re
 import os
+import nltk
 
+from nltk.stem import WordNetLemmatizer, SnowballStemmer
+from nltk.corpus import stopwords
+
+# NTLK tools
+stemmer = SnowballStemmer("english")
+stop_words = stopwords.words('english')
 
 # Regexs for Preprocessing
 ALPHA_NUM = "[^a-zA-z0-9\s]"

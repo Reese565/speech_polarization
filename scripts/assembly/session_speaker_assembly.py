@@ -15,14 +15,8 @@ from multiprocessing import Pool, cpu_count
 from itertools import product, chain
 from gensim.corpora import Dictionary
 
-
-# google storage bucket data paths
-DATA_PATH = "gs://rwc1/data/"
-HB_PATH = os.path.join(DATA_PATH, "hein-bound/")
-
-# data file type
-BY_SPEAKER = "byspeaker_2gram_%s.txt"
-SPEAKER_MAP = "%s_SpeakerMap.txt"
+# Import directory constants
+from constant import DATA_PATH, HB_PATH, BY_SPEAKER, SPEAKER_MAP
 
 # constants
 N_CORES = cpu_count()
