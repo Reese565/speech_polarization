@@ -9,7 +9,7 @@ import numpy as np
 
 
 
-def find_span(d, s, window):
+def find_topic_span(d, s, window):
     """
     Find a span related to a subject within a document.
     
@@ -36,7 +36,7 @@ def find_span(d, s, window):
     return span
 
 
-def find_spans(docs, s, window):
+def find_topic_spans(docs, s, window):
     """
     Turn a list of documents in to a list of spans related to a subject
     
@@ -48,10 +48,9 @@ def find_spans(docs, s, window):
     Returns:
     A list of document spans (may be empty
     """
-    spans = list(map(lambda d: find_span(d, s, window), docs))
-    spans = list(filter(lambda span: not span == None, spans))
+    spans = list(
+        chain.from_iterable(map(lambda d: find_topic_span(d, s, window), docs))
+    )
     
     return spans
     
-    
-
