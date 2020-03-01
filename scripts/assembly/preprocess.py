@@ -2,8 +2,6 @@
 #=*= Preprocessing Speech Module =*=#
 #===================================#
 
-# Methods for preprocessing the speech text
-
 # Dependencies
 import re
 import os
@@ -12,36 +10,21 @@ import nltk
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 from nltk.corpus import stopwords
 
+from preprocess_constant import manual_stopwords, us_states, 
+
 # NTLK tools
 stemmer = SnowballStemmer("english")
-english_stopwords = stopwords.words('english')
 
 # Regexs for Preprocessing
-ALPHA_NUM = "[^a-zA-z0-9\s]"
+NON_ALPHA_NUM = "[^a-zA-z0-9\s]"
+NON_LOWER_ALPHA = "[^a-z\s]"
 DIGIT = "\d"
 NUM = "\d+"
 
-# Stopword Types
-manual_stopwords = ['absent','committee','gentlelady','hereabout','hereinafter','hereto','herewith' 'nay',
-'pro','sir','thereabout','therebeforn','therein','theretofore','therewithal','whereat','whereinto','whereupon',
- 'yea','adjourn','con','gentleman','hereafter','hereinbefore','heretofore','month','none','republican','speak',
- 'thereafter','thereby','thereinafter','thereunder','today','whereby','whereof','wherever','yes','ask','democrat',
- 'gentlemen','hereat','hereinto','hereunder','mr','now','say','speaker','thereagainst','therefor','thereof',
- 'thereunto','whereabouts','wherefore','whereon','wherewith','yield','can','etc','gentlewoman','hereby','hereof',
- 'hereunto','mrs','part','senator','tell','thereat','therefore','thereon','thereupon','whereafter','wherefrom',
- 'whereto','wherewithal','chairman','gentleladies','gentlewomen','herein','hereon','hereupon','nai','per','shall',
- 'thank','therebefore','therefrom','thereto','therewith','whereas','wherein','whereunder','will']
+# Stopword Series
+us_states_stopwords = " ".join(us_states).lower().split(" ")
+english_stopwords = re.sub(NON_LOWER_ALPHA, "", " ".join(stopwords.words('english'))).split(" ")
 
-us_states = ["Alabama","Alaska","Arizona","Arkansas","California","Colorado",
-  "Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois",
-  "Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland",
-  "Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana",
-  "Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York",
-  "North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania",
-  "Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah",
-  "Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"]
-
-us_states_stopwords = " ".join(us_states_stopwords).lower().split(" ")
 
 # stopword compiler
 def stopword_regex(stopwords):
@@ -49,20 +32,52 @@ def stopword_regex(stopwords):
     
     return re.compile(r'\b(' + r'|'.join(stopwords) + r')\b\s*')
 
+# default stopword matcher using all 3 stopword series
+DEFAULT_STOPWORD = stopword_regex(
+    english_stopwords + 
+    manual_stopwords + 
+    us_states_stopwords)
 
 
 def basic_preprocess(text):
-    """lowercasing, removing non-alphanumeric chars, and normalizing numbers"""
+    """
+    Basic preprocessing for NLP
     
-    text = text.lower()
-    text = re.sub(ALPHA_NUM, '', text)
+    - lowercasing
+    - removing non-alphanumeric chars
+    - normalizing numbers
+    - removing leading and trailing whitespace
+    """
+    
+    text = re.sub(NON_ALPHA_NUM, "", text.lower())
     
     if bool(re.search(DIGIT, text)):
-        text = re.sub(NUM, "number", text)
+        text = re.sub(NUM, "", text)
+
+    text = text.strip()
+    
+    return text
+
+
+def dense_preprocess(text, stopword=DEFAULT_STOPWORD):
+    """
+    Thorough preprocessinng for NLP
+    
+    - basic preprocessing
+    - stopword removal 
+    - whitespace removal
+    - stemming
+    """
+    
+    text = basic_preprocess(text)
+    text = re.sub(stopword, "", text)
+    text = list(map(stemmer.stem, text.strip().split(" ")))
+    text = " ".join(text)
 
     return text
 
 
+# Bad, wont use this
 def lda_preprocess(text):
     """basic preprocessing, and then stemming, tokenizing and stopword removal"""
     
