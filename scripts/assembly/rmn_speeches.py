@@ -1,5 +1,5 @@
 #=============================#
-#=*= Preprocessing for LDA =*=#
+#=*= Preprocessing for RMN =*=#
 #=============================#
 
 # Script applies dense preprocessing to all congressional
@@ -21,7 +21,8 @@ N_CORES = cpu_count()
 LOCAL_PATH = "/home/rocassius/data/gen-hein-bound/"
 # for testing
 import numpy as np
-SESSIONS = [format(s, '03d') for s in np.arange(43, 47)] 
+SESSIONS = [format(s, '03d') for s in np.arange(43, 45)] 
+
      
     
 def main():
