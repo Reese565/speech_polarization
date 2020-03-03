@@ -8,10 +8,11 @@ import os
 import nltk
 import pandas as pd
 
+from functools import partial 
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 from nltk.corpus import stopwords
 
-from constant import DATA_PATH
+from constant import DATA_PATH, HB_PATH, SPEECHES
 from preprocess_constant import manual_stopwords, us_states, additional_stopwords
 
 # NTLK tools
@@ -45,6 +46,7 @@ DEFAULT_STOPWORD = stopword_regex(
     name_stopwords)
 
 
+#=*= Functions for processing documents =*=#
 
 def basic_preprocess(text):
     """
@@ -84,13 +86,36 @@ def dense_preprocess(text, stopword=DEFAULT_STOPWORD):
     return text
 
 
-# Bad, wont use this
-def lda_preprocess(text):
-    """basic preprocessing, and then stemming, tokenizing and stopword removal"""
+def preprocess_session(s, preprocess_func, local_path):
+    """
+    Preprocesses session _s_ with _preprocess_func_ and saves to _local_path_
+    """
+    # define file paths
+    in_file_path = os.path.join(HB_PATH, SPEECHES % s)
+    out_file_path = os.path.join(local_path, SPEECHES % s)
     
-    text = basic_preprocess(text)
-    text = stemmer.stem(text)
-    text = text.split()
-    text = list(filter(lambda w: w not in english_stopwords, text))
+    # read file, and preprocess it
+    df = pd.read_csv(in_file_path, sep="|")
+    df = df[:10]
+    df["speech"] = list(map(preprocess_func, df["speech"].values))
     
-    return text
+    # write 
+    df.to_csv(out_file_path, sep="|", index=False)
+    
+    print("Session", s, "PROCESSED")
+
+
+def make_session_preprocessor(preprocess_func, local_path):
+    """
+    Returns function for preprocessing a specch and saving it using
+    the preprocessor of your choice
+    """
+    preprocessor = partial(preprocess_session, 
+                           preprocess_func=preprocess_func,
+                           local_path=local_path)
+   
+    return preprocessor
+    
+    
+    
+    

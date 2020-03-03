@@ -11,50 +11,32 @@ import os
 import numpy as np
 import pandas as pd
 
+from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor  
 
-from constant import HB_PATH, SPEECHES
-from preprocess import dense_preprocess
-
-# local save path
-LOCAL_PATH = "/home/rocassius/data/gen-hein-bound/"
-
-# session strings
-sessions = [format(s, '03d') for s in np.arange(43, 112)]
-
+from preprocess import dense_preprocess, make_session_preprocessor
 
 # constants
 N_CORES = cpu_count()
-
-
-def preprocess_session(s):
-    
-    in_file_path = os.path.join(HB_PATH, SPEECHES % s)
-    out_file_path = os.path.join(LOCAL_PATH, SPEECHES % s)
-    
-    # read file
-    df = pd.read_csv(in_file_path, sep="|")
-    
-    # preprocess it
-    df["speech"] = list(map(dense_preprocess, df["speech"].values))
-    
-    # write 
-    df.to_csv(out_file_path, sep="|", index=False)
-    
-    print("Session", s, "PROCESSED")
-      
-  
-    
-def preprocess_sessions_parallel(sessions):
-    
-    with ThreadPoolExecutor(max_workers = N_CORES) as executor:
-        executor.map(preprocess_session, sessions)
-    
+LOCAL_PATH = "/home/rocassius/data/gen-hein-bound/"
+# sessions = [format(s, '03d') for s in np.arange(43, 112)] # session strings
+sessions = [format(s, '03d') for s in np.arange(43, 45)] 
+     
     
 def main():
     
-    preprocess_sessions_parallel(sessions)    
-       
+    # create session preprocessor
+    preprocess_session = make_session_preprocessor(
+        preprocess_func=dense_preprocess,
+        local_path=LOCAL_PATH)
+    
+    # execute in parallel
+    with ThreadPoolExecutor(max_workers = N_CORES) as executor:
+        executor.map(preprocess_session, sessions)    
+    
+    # report
+    print("SUCCESS")
+     
         
 if __name__ == "__main__":
     main()
