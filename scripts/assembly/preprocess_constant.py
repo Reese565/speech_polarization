@@ -105,7 +105,7 @@ manual_stopwords = [
     'will'
 ]
 
-# Cassius and Williams additional manual selected stopwords
+# Cassius and Williams additional manually selected stopwords
 additional_stopwords = [
     'ms',
     'speaker',

@@ -6,11 +6,13 @@
 import re
 import os
 import nltk
+import pandas as pd
 
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 from nltk.corpus import stopwords
 
-from preprocess_constant import manual_stopwords, us_states, 
+from constant import DATA_PATH
+from preprocess_constant import manual_stopwords, us_states, additional_stopwords
 
 # NTLK tools
 stemmer = SnowballStemmer("english")
@@ -24,19 +26,24 @@ NUM = "\d+"
 # Stopword Series
 us_states_stopwords = " ".join(us_states).lower().split(" ")
 english_stopwords = re.sub(NON_LOWER_ALPHA, "", " ".join(stopwords.words('english'))).split(" ")
+name_stopwords = pd.read_csv(os.path.join(DATA_PATH, "voteview/congress_names.csv")).name.tolist()
 
 
-# stopword compiler
+# Stopword compiler
 def stopword_regex(stopwords):
     """Compile a regular expression to match any of the words in stopwords"""
+    stopword_pattern = re.compile(r'\b(' + r'|'.join(stopwords) + r')\b\s*')
     
-    return re.compile(r'\b(' + r'|'.join(stopwords) + r')\b\s*')
+    return stopword_pattern
 
 # default stopword matcher using all 3 stopword series
 DEFAULT_STOPWORD = stopword_regex(
     english_stopwords + 
     manual_stopwords + 
-    us_states_stopwords)
+    additional_stopwords +
+    us_states_stopwords + 
+    name_stopwords)
+
 
 
 def basic_preprocess(text):
