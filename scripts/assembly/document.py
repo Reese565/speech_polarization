@@ -53,32 +53,13 @@ def subject_docs(
     return subject_df
 
 
-def steps_to_space(d):
-    """Returns the distance to nearest space or end of string"""
-    
-    search = re.search(" ", d)
-    if not search: 
-        return len(d)
-    steps = search.span()[0]
-    
-    return steps
-
-
-def adjust_span_bounds(d, lower, upper):
-    """
-    Returns the adjusted lower and upper indices of a span so that the
-    span does not end in the middle of a word
-    """
-    
-    lower -= steps_to_space(d[:lower][::-1])
-    upper += steps_to_space(d[upper:])
-    
-    return lower, upper
-
-
 def find_topic_span(d, s, window):
+    """
+    Find subset of a document related to subject s
+    Return none if s is not in the document
+    """
     
-    search = re.search(s, d)
+    search = re.search(r"\b(" + s + r")\b\s*", d)
     
     if not search: return None
     
@@ -94,4 +75,27 @@ def find_topic_span(d, s, window):
     span = d[lower:upper]
     
     return span
+
+
+def adjust_span_bounds(d, lower, upper):
+    """
+    Returns the adjusted lower and upper indices of a span so that the
+    span does not end in the middle of a word
+    """
+    
+    lower -= steps_to_space(d[:lower][::-1])
+    upper += steps_to_space(d[upper:])
+    
+    return lower, upper
+
+
+def steps_to_space(d):
+    """Returns the distance to nearest space or end of string"""
+    
+    search = re.search(" ", d)
+    if not search: 
+        return len(d)
+    steps = search.span()[0]
+    
+    return steps
     
