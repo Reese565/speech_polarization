@@ -9,6 +9,7 @@ import numpy as np
 # google storage bucket data paths
 DATA_PATH = "gs://rwc1/data/"
 HB_PATH = os.path.join(DATA_PATH, "hein-bound/")
+EMBEDDINGS = os.path.join(DATA_PATH, "embeddings/")
 
 # data file type
 BY_SPEAKER = "byspeaker_2gram_%s.txt"
