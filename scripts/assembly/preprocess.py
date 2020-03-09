@@ -96,7 +96,6 @@ def preprocess_session(s, preprocess_func, local_path):
     
     # read file, and preprocess it
     df = pd.read_csv(in_file_path, sep="|")
-    df = df[:100]
     df["speech"] = list(map(preprocess_func, df["speech"].values))
     
     # write 

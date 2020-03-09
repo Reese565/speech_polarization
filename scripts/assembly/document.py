@@ -10,60 +10,92 @@ import numpy as np
 import pandas as pd
 
 from itertools import chain
+from functools import partial
 
 from constant import HB_PATH, SPEECHES, SPEAKER_MAP
+from subjects import subject_keywords
 from preprocess import *
 
 
 # constants
 AVG_CHARS_PER_TOKEN = 5
-WINDOW_DEFAULT = 50 * AVG_CHARS_PER_TOKEN
+MIN_TOKENS = 50
+WINDOW = MIN_TOKENS * AVG_CHARS_PER_TOKEN
+
+
+def assemble_subject_docs(
+    subject,
+    sessions,  
+    speech_path, 
+    min_tokens=MIN_TOKENS, 
+    window=WINDOW):
+    """
+    Returns a pandas dataframe of speech subsets found by 
+    subject_docs_func for every session in sessions
+    """
+    
+    get_subject_docs = partial(subject_docs,
+                               span_finder=make_span_finder(subject, window),
+                               speech_path=speech_path,
+                               min_tokens=min_tokens)
+    
+    subject_df = pd.concat([get_subject_docs(s) for s in sessions])
+    
+    return subject_df
 
 
 def subject_docs(
     session, 
-    subject, 
-    path, 
-    min_len_tokens=WINDOW_DEFAULT, 
-    window=WINDOW_DEFAULT):
+    span_finder, 
+    speech_path, 
+    min_tokens):
     """Returns a pandas dataframe of speech subsets related to the inputted subject
     """
     
-    # read  session dataframes
+    # read session dataframes
     session_str = format(session, '03d') 
-    speeches = pd.read_csv(os.path.join(path, SPEECHES % session_str), sep = "|")
+    speeches = pd.read_csv(os.path.join(speech_path, SPEECHES % session_str), sep = "|")
     speaker_map = pd.read_csv(os.path.join(HB_PATH, SPEAKER_MAP % session_str), sep = "|")
     
     # merge
-    df = (speaker_map[["speakerid", "speech_id"]]
+    df = (speaker_map[["speech_id","speakerid", "party"]]
       .merge(speeches, how="right")
       .drop("speech_id", axis=1)
-      .dropna())
+      .dropna()
+      .to_numpy())
     
-    # compute minimum speech length in chars
-    min_len_chars = min_len_tokens * AVG_CHARS_PER_TOKEN
-
-    # filter for min length, find spans
-    rows = filter(lambda r: len(r[1]) > min_len_chars, df.to_numpy())
-    rows = map(lambda r: (r[0], find_topic_span(r[1], subject, window)), rows)
-    rows = filter(lambda r: r[1] is not None, rows)
+    # filter for min character length length, find spans    
+    rows = filter(lambda r: len(r[-1]) > min_tokens*AVG_CHARS_PER_TOKEN, map(tuple, df))
+    rows = map(lambda r: r[:-1] + (span_finder(r[-1]),) , rows)
+    rows = filter(lambda r: r[-1] is not None, rows)
     
-    subject_df = pd.DataFrame(rows, columns=["speakerid", "speech"])
-
+    # make dataframe, add session
+    subject_df = pd.DataFrame(rows, columns=["speakerid", "party", "speech"])
+    subject_df["congress"] = session
+    
     return subject_df
 
 
-def find_topic_span(d, s, window):
+def make_span_finder(subject, window):
+    
+    span_finder = partial(find_subject_span, 
+                          keywords=subject_keywords[subject], 
+                          window=window)
+    
+    return span_finder
+
+
+def find_subject_span(d, keywords, window):
     """
     Find subset of a document related to subject s
     Return none if s is not in the document
     """
     
-    search = re.search(r"\b(" + s + r")\b\s*", d)
-    
+    # search
+    search = re.search("(" + "|".join(keywords) + ")", d)
     if not search: return None
     
-    # locate the match
+    # locate the first match
     loc = search.span()
     
     # find lower and upper indices of span
