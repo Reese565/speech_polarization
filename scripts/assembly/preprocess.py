@@ -47,30 +47,23 @@ DEFAULT_STOPWORD = stopword_regex(
 
 
 #=*= Functions for processing documents =*=#
-
 def basic_preprocess(text):
     """
-    Basic preprocessing for NLP
+    Basic preprocessing for RMN
     
     - lowercasing
-    - removing non-alphanumeric chars
-    - normalizing numbers
+    - removing non-alphabet chars
     - removing leading and trailing whitespace
     """
     
-    text = re.sub(NON_ALPHA_NUM, "", text.lower())
-    
-    if bool(re.search(DIGIT, text)):
-        text = re.sub(NUM, "", text)
-
-    text = text.strip()
+    text = re.sub(NON_LOWER_ALPHA, "", text.lower()).strip()
     
     return text
 
 
-def dense_preprocess(text, stopword=DEFAULT_STOPWORD):
+def dense_preprocess(text, stopword=DEFAULT_STOPWORD, stem=False):
     """
-    Thorough preprocessinng for NLP
+    Thorough preprocessing for NLP
     
     - basic preprocessing
     - stopword removal 
@@ -79,9 +72,11 @@ def dense_preprocess(text, stopword=DEFAULT_STOPWORD):
     """
     
     text = basic_preprocess(text)
-    text = re.sub(stopword, "", text)
-    text = list(map(stemmer.stem, text.strip().split(" ")))
-    text = " ".join(text)
+    text = re.sub(stopword, "", text).strip()
+    
+    if stem:
+        text = list(map(stemmer.stem, text.split(" ")))
+        text = " ".join(text)
 
     return text
 

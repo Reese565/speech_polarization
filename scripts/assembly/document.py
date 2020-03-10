@@ -12,7 +12,7 @@ import pandas as pd
 from itertools import chain
 from functools import partial
 
-from constant import HB_PATH, SPEECHES, SPEAKER_MAP
+from constant import HB_PATH, SPEECHES, SPEAKER_MAP, DOCUMENT
 from subject import subject_keywords
 from preprocess import *
 
@@ -21,6 +21,19 @@ from preprocess import *
 AVG_CHARS_PER_TOKEN = 5
 MIN_TOKENS = 50
 WINDOW = MIN_TOKENS * AVG_CHARS_PER_TOKEN
+
+
+
+def save_subject_documents(subject, assemble_func, write_path):
+    
+    # get documents
+    df = assemble_func(subject)
+    
+    # write
+    df.to_csv(os.path.join(write_path, DOCUMENT % subject), sep="|", index=False)
+    
+    # update
+    print(subject, "DOCUMENTS MADE")
 
 
 def assemble_subject_docs(

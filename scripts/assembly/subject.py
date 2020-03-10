@@ -110,8 +110,8 @@ subject_keywords = {
 #            .to_dict())
 
 
-original_subject_keywords = 
-{'alcohol': ['alcohol',
+original_subject_keywords = {
+ 'alcohol': ['alcohol',
   'antisaloon',
   'distil',
   'liquor',

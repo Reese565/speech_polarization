@@ -20,10 +20,7 @@ from preprocess import dense_preprocess, make_session_preprocessor
 N_CORES = cpu_count()
 LOCAL_PATH = "/home/rocassius/data/gen-hein-bound/"
 # for testing
-import numpy as np
-SESSIONS = [format(s, '03d') for s in np.arange(43, 45)] 
 
-     
     
 def main():
     
