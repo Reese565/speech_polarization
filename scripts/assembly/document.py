@@ -13,7 +13,7 @@ from itertools import chain
 from functools import partial
 
 from constant import HB_PATH, SPEECHES, SPEAKER_MAP
-from subjects import subject_keywords
+from subject import subject_keywords
 from preprocess import *
 
 
