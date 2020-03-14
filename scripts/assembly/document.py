@@ -24,6 +24,8 @@ WINDOW = MIN_TOKENS * AVG_CHARS_PER_TOKEN
 
 
 
+#=*= Functions for finding documents in speeches =*=#
+
 def save_subject_documents(subject, assemble_func, write_path):
     
     # get documents
@@ -53,6 +55,7 @@ def assemble_subject_docs(
                                min_tokens=min_tokens)
     
     subject_df = pd.concat([get_subject_docs(s) for s in sessions])
+    subject_df["subject"] = subject
     
     return subject_df
 
@@ -125,7 +128,7 @@ def find_subject_span(d, keywords, window):
 def adjust_span_bounds(d, lower, upper):
     """
     Returns the adjusted lower and upper indices of a span so that the
-    span does not end in the middle of a word
+    span does not end or start in the middle of a word
     """
     
     lower -= steps_to_space(d[:lower][::-1])
@@ -143,4 +146,15 @@ def steps_to_space(d):
     steps = search.span()[0]
     
     return steps
+  
+    
+#=*= Functions for loading documents =*=#  
+    
+def load_documents(subjects, read_path):
+    """Returns a dataframe of documents belonging the the given subjects
+    """
+    subject_df_list = [pd.read_csv(os.path.join(read_path, DOCUMENT % s), sep ="|") for s in subjects]
+    documents_df = pd.concat(subject_df_list)
+    
+    return documents_df
     
