@@ -1,0 +1,138 @@
+#==========================================#
+#=*= Constants For Speech Preprocessing =*=#
+#==========================================#
+
+
+
+#=======================#
+#=*= Stopword Series =*=#
+#=======================#
+
+# Manually Selected stopwords by Gentzkow et al.
+manual_stopwords = [
+    'absent',
+    'committee',
+    'gentlelady',
+    'hereabout',
+    'hereinafter',
+    'hereto',
+    'herewith',
+    'nay',
+    'pro',
+    'sir',
+    'thereabout',
+    'therebeforn',
+    'therein',
+    'theretofore',
+    'therewithal',
+    'whereat',
+    'whereinto',
+    'whereupon',
+    'yea',
+    'adjourn',
+    'con',
+    'gentleman',
+    'hereafter',
+    'hereinbefore',
+    'heretofore',
+    'month',
+    'none',
+    'republican',
+    'speak',
+    'thereafter',
+    'thereby',
+    'thereinafter',
+    'thereunder',
+    'today',
+    'whereby',
+    'whereof',
+    'wherever',
+    'yes',
+    'ask',
+    'democrat',
+    'gentlemen',
+    'hereat',
+    'hereinto',
+    'hereunder',
+    'mr',
+    'now',
+    'say',
+    'speaker',
+    'thereagainst',
+    'therefor',
+    'thereof',
+    'thereunto',
+    'whereabouts',
+    'wherefore',
+    'whereon',
+    'wherewith',
+    'yield',
+    'can',
+    'etc',
+    'gentlewoman',
+    'hereby',
+    'hereof',
+    'hereunto',
+    'mrs',
+    'part',
+    'senator',
+    'tell',
+    'thereat',
+    'therefore',
+    'thereon',
+    'thereupon',
+    'whereafter',
+    'wherefrom',
+    'whereto',
+    'wherewithal',
+    'chairman',
+    'gentleladies',
+    'gentlewomen',
+    'herein',
+    'hereon',
+    'hereupon',
+    'nai',
+    'per',
+    'shall',
+    'thank',
+    'therebefore',
+    'therefrom',
+    'thereto',
+    'therewith',
+    'whereas',
+    'wherein',
+    'whereunder',
+    'will'
+]
+
+# Cassius and Williams additional manually selected stopwords
+additional_stopwords = [
+    'ms',
+    'speaker',
+    'madam'
+]
+
+# United States
+us_states = ["Alabama","Alaska","Arizona","Arkansas","California","Colorado",
+  "Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois",
+  "Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland",
+  "Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana",
+  "Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York",
+  "North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania",
+  "Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah",
+  "Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"]
+
+months = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june", 
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december"
+]
