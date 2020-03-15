@@ -85,13 +85,14 @@ def preprocess_session(s, preprocess_func, local_path):
     """
     Preprocesses session _s_ with _preprocess_func_ and saves to _local_path_
     """
+
     # define file paths
     in_file_path = os.path.join(HB_PATH, SPEECHES % s)
     out_file_path = os.path.join(local_path, SPEECHES % s)
-    
+
     # read file, and preprocess it
     df = pd.read_csv(in_file_path, sep="|")
-    df["speech"] = list(map(preprocess_func, df["speech"].values))
+    df["speech"] = list(map(preprocess_func, df["speech"]))
     
     # write 
     df.to_csv(out_file_path, sep="|", index=False)
