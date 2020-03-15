@@ -27,4 +27,3 @@ DOCUMENT = "documents_%s.txt"
 MIN_SESSION = 43
 MAX_SESSION = 111
 SESSIONS = [format(s, '03d') for s in np.arange(MIN_SESSION, MAX_SESSION + 1)]
-

@@ -110,7 +110,3 @@ def make_session_preprocessor(preprocess_func, local_path):
                            local_path=local_path)
    
     return preprocessor
-    
-    
-    
-    
