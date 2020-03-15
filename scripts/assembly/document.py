@@ -38,7 +38,7 @@ def save_subject_documents(subject, assemble_func, write_path):
     
     # get documents
     df = assemble_func(subject)
-    
+
     # write
     df.to_csv(os.path.join(write_path, DOCUMENT % subject), sep="|", index=False)
     
