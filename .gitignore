@@ -1,6 +1,6 @@
 
 # file type to ignore
-#.ipynb_checkpoints
+.ipynb_checkpoints
 *.pyc 
 __pycache__/
 .DS_Store
