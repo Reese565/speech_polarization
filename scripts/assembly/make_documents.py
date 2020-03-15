@@ -17,7 +17,7 @@ from document import *
 
 # constants
 N_CORES = cpu_count()
-SAVE_PATH = "/home/rocassius/data/gen-docs/"
+SAVE_PATH = "/home/reese56/w266_final/data/gen-docs/"
 
 # for testing
 sessions = [43, 44, 45] 
