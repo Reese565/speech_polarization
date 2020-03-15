@@ -2,6 +2,8 @@
 #=*= Preprocessing Speech Module =*=#
 #===================================#
 
+# Methods for preprocessing the speech text
+
 # Dependencies
 import re
 import os
@@ -17,6 +19,7 @@ from preprocess_constant import manual_stopwords, us_states, additional_stopword
 
 # NTLK tools
 stemmer = SnowballStemmer("english")
+
 
 # Regexs for Preprocessing
 NON_ALPHA_NUM = "[^a-zA-z0-9\s]"

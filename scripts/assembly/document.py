@@ -2,8 +2,7 @@
 #=*= Identifying Documents Module =*=#
 #====================================#
 
-# * Methods for finding wrangling documents into useable formats
-# * Methods for finding relevant document in speech data
+# Methods for finding relevant document in speech data
 
 import os
 import numpy as np
@@ -14,6 +13,7 @@ from functools import partial
 
 from constant import HB_PATH, SPEECHES, SPEAKER_MAP, DOCUMENT
 from subject import subject_keywords
+
 from preprocess import *
 
 
