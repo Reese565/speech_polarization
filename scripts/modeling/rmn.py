@@ -9,6 +9,7 @@ from embeddings import EMBEDDING_DIM
 
 # constants
 NUM_TOPICS = 20
+OPTIMIZER = 'adam'
 
 
 class RMN(object):
@@ -18,7 +19,7 @@ class RMN(object):
         self.num_topics = num_topics
     
     
-    def model_loss(self, layer):
+    def model_loss(self, layer, lamb = 1.0):
 
         R = K.transpose(layer)
 
@@ -27,33 +28,34 @@ class RMN(object):
             hinge_loss = tf.keras.losses.hinge(y_true, y_pred)
 
             RR_t = K.dot(R, K.transpose(R))
-            Id_mat = K.eye(embedding_dim)
+            Id_mat = K.eye(self.embedding_dim)
 
             orth_penalty = K.sqrt(K.sum(K.square(RR_t - Id_mat)))
 
-            return hinge_loss + orth_penalty
+            return hinge_loss + lamb*orth_penalty
 
         return custom_loss
     
     
     
     
-    def build_model(self):
+    def build_model(self, metadata_dict):
         
         # input avg span embeddings
-        vt = Input(shape=(embedding_dim,), name='Avg.Span.Embed.Input')
+        vt = Input(shape=(self.embedding_dim,), name='Avg.Span.Embed.Input')
 
         ## initializing speaker metadata embeddings
 
         input_layers = [vt]
         embedding_layers = [vt]
-        for col in speak_map_cols:
+        for col in metadata_dict.keys():
 
-            # one-hot-encoded
-            input_layer = Input(shape=(metadata_dict[col]['input_dim'],), name= col + '.Embed.Input')
-            embedding_init = (Dense(units = embedding_dim,
+            # one-hot-encoded embeedings layers
+            input_dim = metadata_dict[col]['input_dim']
+            input_layer = Input(shape=(input_dim,), name= col + '.Embed.Input')
+            embedding_init = (Dense(units = self.embedding_dim,
                                     kernel_initializer = 'glorot_normal',
-                                    input_shape = (metadata_dict[col]['input_dim'], ),
+                                    input_shape = (input_dim, ),
                                     activation = "linear",
                                     name = 'C_' + col)(input_layer))
 
@@ -65,20 +67,20 @@ class RMN(object):
         _ht = tf.keras.layers.Concatenate(axis=1, name = 'Concat.Layer')(embedding_layers)
 
         # dense layer
-        ht = Dense(units = embedding_dim, input_shape = (_ht.shape[1], ), activation = "relu", name = "Wh")(_ht)
+        ht = Dense(units = self.embedding_dim, input_shape = (_ht.shape[1], ), activation = "relu", name = "Wh")(_ht)
 
         # dense layer with softmax activation, (where previous states will eventually be inserted) 
-        dt = Dense(units = num_topics, input_shape = (embedding_dim, ), activation = "softmax", name = "Wd")(ht)
+        dt = Dense(units = self.num_topics, input_shape = (self.embedding_dim, ), activation = "softmax", name = "Wd")(ht)
 
         # reconstruction layer
-        rt = Dense(units = embedding_dim,
-                   input_shape = (num_topics, ),
+        rt = Dense(units = self.embedding_dim,
+                   input_shape = (self.num_topics, ),
                    activation = "linear",
-                   kernel_regularizer = Orthoganal(),
+#                    kernel_regularizer = Orthoganal(),
                    name = "R")(dt)
 
         model = tf.keras.Model(inputs=input_layers, outputs=rt)
-        model.compile(optimizer = 'adam', loss=model_loss(rt))
+        model.compile(optimizer = OPTIMIZER, loss = self.model_loss(rt))
 
         return model
     
