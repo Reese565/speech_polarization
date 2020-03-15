@@ -5,12 +5,11 @@ import tensorflow.keras.backend as K
 import pandas as pd
 import numpy as np
 
-
-from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 
 os.chdir("../assembly/")
-from constant import SPEECHES, SPEAKER_MAP, HB_PATH, EMBEDDINGS
+from constant import EMBEDDINGS
 
 
 
@@ -20,14 +19,16 @@ EMBEDDING_DIM = GLOVE_DIMS[0]
 GLOVE_PATH = os.path.join(EMBEDDINGS, 'glove6B/glove.6B.%dd.csv' % EMBEDDING_DIM)
 
 
-# tokenizers = 'import from tokenizer file'
-
-# speeches_word_index = tokenizers['speech']
-
-
-def build_embedding_matrix(speeches_word_index, embedding_path = GLOVE_PATH):
+def fetch_embeddings(embeddings_dim = EMBEDDING_DIM):
     
-    embeddings_index = pd.read_csv(GLOVE_PATH).to_dict(orient = 'list')
+    path = os.path.join(EMBEDDINGS, 'glove6B/glove.6B.%dd.csv' % EMBEDDING_DIM)
+    
+    embeddings_index = pd.read_csv(path).to_dict(orient = 'list')
+    
+    return embeddings_index
+
+
+def build_embedding_matrix(speeches_word_index, embeddings_index):
 
     embedding_matrix = np.zeros((len(speeches_word_index) + 1, EMBEDDING_DIM))
     for word, i in speeches_word_index.items():
@@ -37,11 +38,3 @@ def build_embedding_matrix(speeches_word_index, embedding_path = GLOVE_PATH):
             embedding_matrix[i] = embedding_vector
     
     return embedding_matrix
-
-
-
-# def add_words_to_matrix(embedding_matrix):
-    
-#     return None
-    
-    
