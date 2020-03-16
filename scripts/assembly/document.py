@@ -2,7 +2,8 @@
 #=*= Identifying Documents Module =*=#
 #====================================#
 
-# Methods for finding relevant document in speech data
+# * Methods for finding wrangling documents into useable formats
+# * Methods for finding relevant document in speech data
 
 import os
 import numpy as np
@@ -13,7 +14,6 @@ from functools import partial
 
 from constant import HB_PATH, SPEECHES, SPEAKER_MAP, DOCUMENT
 from subject import subject_keywords
-
 from preprocess import *
 
 
@@ -22,7 +22,15 @@ AVG_CHARS_PER_TOKEN = 5
 MIN_TOKENS = 50
 WINDOW = MIN_TOKENS * AVG_CHARS_PER_TOKEN
 
-
+speaker_info_cols = [ 
+    "speakerid", 
+    "lastname", 
+    "firstname", 
+    "chamber", 
+    "state", 
+    "gender", 
+    "party"
+]
 
 #=*= Functions for finding documents in speeches =*=#
 
@@ -30,7 +38,7 @@ def save_subject_documents(subject, assemble_func, write_path):
     
     # get documents
     df = assemble_func(subject)
-    
+
     # write
     df.to_csv(os.path.join(write_path, DOCUMENT % subject), sep="|", index=False)
     
@@ -74,11 +82,12 @@ def subject_docs(
     speaker_map = pd.read_csv(os.path.join(HB_PATH, SPEAKER_MAP % session_str), sep = "|")
     
     # merge
-    df = (speaker_map[["speech_id","speakerid", "party"]]
-      .merge(speeches, how="right")
+    df = (speaker_map[speaker_info_cols + ["speech_id"]]
+      .merge(speeches, on="speech_id", how="right")
       .drop("speech_id", axis=1)
       .dropna()
       .to_numpy())
+    
     
     # filter for min character length length, find spans    
     rows = filter(lambda r: len(r[-1]) > min_tokens*AVG_CHARS_PER_TOKEN, map(tuple, df))
@@ -86,7 +95,7 @@ def subject_docs(
     rows = filter(lambda r: r[-1] is not None, rows)
     
     # make dataframe, add session
-    subject_df = pd.DataFrame(rows, columns=["speakerid", "party", "speech"])
+    subject_df = pd.DataFrame(rows, columns=speaker_info_cols + ["document"])
     subject_df["congress"] = session
     
     return subject_df

@@ -2,8 +2,6 @@
 #=*= Preprocessing Speech Module =*=#
 #===================================#
 
-# Methods for preprocessing the speech text
-
 # Dependencies
 import re
 import os
@@ -19,7 +17,6 @@ from preprocess_constant import manual_stopwords, us_states, additional_stopword
 
 # NTLK tools
 stemmer = SnowballStemmer("english")
-
 
 # Regexs for Preprocessing
 NON_ALPHA_NUM = "[^a-zA-z0-9\s]"
@@ -88,13 +85,14 @@ def preprocess_session(s, preprocess_func, local_path):
     """
     Preprocesses session _s_ with _preprocess_func_ and saves to _local_path_
     """
+
     # define file paths
     in_file_path = os.path.join(HB_PATH, SPEECHES % s)
     out_file_path = os.path.join(local_path, SPEECHES % s)
-    
+
     # read file, and preprocess it
     df = pd.read_csv(in_file_path, sep="|")
-    df["speech"] = list(map(preprocess_func, df["speech"].values))
+    df["speech"] = list(map(preprocess_func, df["speech"]))
     
     # write 
     df.to_csv(out_file_path, sep="|", index=False)
@@ -112,7 +110,3 @@ def make_session_preprocessor(preprocess_func, local_path):
                            local_path=local_path)
    
     return preprocessor
-    
-    
-    
-    
