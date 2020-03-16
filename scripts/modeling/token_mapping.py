@@ -1,5 +1,9 @@
 import os
 import pandas as pd
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
