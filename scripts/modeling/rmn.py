@@ -26,6 +26,8 @@ class RMN(object):
     
     
     def model_loss(self, layer, lamb = 1.0):
+        """Custom loss function to engourage 
+        orthoganality of dictionary matrix R."""
 
         R = K.transpose(layer)
 
@@ -43,16 +45,16 @@ class RMN(object):
         return custom_loss
     
     def summary(self):
+        """Standard summary function for keras model"""
         
         self.model.summary()
         
         return None
     
     def ingest_inputs(self, embeddings_matrix, train_data):
+        """"""
     
         # avergage span embeddings
-        
-#         speeches_train_padded = self.metadata_dict['speech']['train_padded']
         Vst_train = embeddings_matrix[train_data].mean(axis=1)
 
         inputs = [Vst_train]
