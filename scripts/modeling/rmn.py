@@ -52,7 +52,7 @@ class RMN(object):
         return None
     
     def ingest_inputs(self, embeddings_matrix, train_data):
-        """"""
+        """Feeds and assembles inputs to model"""
     
         # avergage span embeddings
         Vst_train = embeddings_matrix[train_data].mean(axis=1)
@@ -69,6 +69,7 @@ class RMN(object):
     
     
     def build_model(self, metadata_dict):
+        """"""
         
         self.metadata_dict = metadata_dict
         
