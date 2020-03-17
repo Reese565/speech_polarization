@@ -28,10 +28,10 @@ def fetch_embeddings(embeddings_dim = EMBEDDING_DIM):
     return embeddings_index
 
 
-def build_embedding_matrix(speeches_word_index, embeddings_index):
+def build_embedding_matrix(word_index, embeddings_index):
 
-    embedding_matrix = np.zeros((len(speeches_word_index) + 1, EMBEDDING_DIM))
-    for word, i in speeches_word_index.items():
+    embedding_matrix = np.zeros((len(word_index) + 1, EMBEDDING_DIM))
+    for word, i in word_index.items():
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
             # words not found in embedding index will be all-zeros.
