@@ -10,7 +10,6 @@ MAX_SPAN_LENGTH = 50
 NUM_TOPICS = 20
 OPTIMIZER = 'adam'
 
-
 class RMN(object):
     
     def __init__(
@@ -27,9 +26,10 @@ class RMN(object):
         
         def custom_loss(y_true, y_pred):
             hinge_loss = tf.keras.losses.hinge(y_true, y_pred)
+            
             RR_t = K.dot(R, K.transpose(R))
             Id_mat = K.eye(self.embedding_dim)
-            orth_penalty = K.sqrt(K.sum(K.square(RR_t - Id_mat)))
+            orth_penalty = K.sqrt(K.sum(K.square(RR_t - Id_mat))) # axis = 1?
             
             return hinge_loss + lamb*orth_penalty
         
@@ -45,18 +45,18 @@ class RMN(object):
             # embedding layers
             input_layer = Input(shape=(1,), name= col + '.Input')
             embedding_init = Embedding(
-                input_dim = metadata_dict[col]['input_dim'], 
+                input_dim = metadata_dict[col]['input_dim']+1, 
                 output_dim = self.embedding_dim,
                 input_length = 1)(input_layer)
             
             # reshape
             embedding_layer = Reshape((self.embedding_dim,), name=col + '.Embed.Layer')(embedding_init)
-
+            
             input_layers.append(input_layer)
             embedding_layers.append(embedding_layer)
 
         # concat speaker metadata embeddings
-        _ht = tf.keras.layers.Concatenate(axis=0, name = 'Concat.Layer')(embedding_layers)
+        _ht = tf.keras.layers.Concatenate(axis=1, name = 'Concat.Layer')(embedding_layers)
 
         # dense layer
         ht = Dense(units = self.embedding_dim, 
@@ -76,7 +76,8 @@ class RMN(object):
                    name = "R")(dt)
 
         model = tf.keras.Model(inputs=input_layers, outputs=rt)
+        
         model.compile(optimizer = OPTIMIZER, loss = self.model_loss(rt))
+        # model.compile(optimizer = OPTIMIZER, loss='mean_squared_error')
 
         self.model = model
-        return model   

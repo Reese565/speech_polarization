@@ -24,7 +24,7 @@ def ohe_attributes(subject_df):
 
 
 
-def build_tokenizer_dict(document_df, feature_columns, max_span_len = MAX_TOKENS):
+def build_tokenizer_dict(document_df, feature_columns, max_span_len = MIN_TOKENS):
 
     tokenizers = {}
     for col in ['document'] + feature_columns:
@@ -48,7 +48,7 @@ def build_tokenizer_dict(document_df, feature_columns, max_span_len = MAX_TOKENS
 
 def build_metadata_dict(documents_df, feature_columns):
     
-    metadata_dict = {col:{'input_dim': docs_df[col].unique().shape[0]} 
+    metadata_dict = {col:{'input_dim': documents_df[col].unique().shape[0]} 
                      for col in feature_columns}
         
     return metadata_dict
