@@ -1,13 +1,16 @@
 import os
 import pandas as pd
+
+from functools import partial
+
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-os.chdir('../assembly/')
-from document import WINDOW
+# constants
+MAX_TOKENS = 50
 
 
-def ohe_attribures(subject_df):
+def ohe_attributes(subject_df):
     
     # extract speaker metadata attributes
     attributes = subject_df.columns.drop('speech')
@@ -20,56 +23,49 @@ def ohe_attribures(subject_df):
     for col in attributes:
         subject_df = pd.concat([subject_df,pd.get_dummies(subject_df[col])], axis = 1)
 
-
     return subject_df
 
 
-
-def build_tokenizer_dict(subject_df):
+def tokenize_pad(documents, tokenizer, max_span_len):
+    """Tokenize and pad documents using a tokenizer
+    """
+    tokenized = tokenizer.texts_to_sequences(documents)
+    padded = pad_sequences(tokenized, maxlen=max_span_len, padding = "post")
     
-    max_len = WINDOW + 1
+    return padded
+
+
+def build_tokenizer_dict(document_df, max_span_len = MAX_TOKENS):
+    """Returns a dictionary with useful properties of a tokenizer fit on document_df
+    """
+    tokenizer = Tokenizer()
+    tokenizer.fit_on_texts(document_df['document'])
+    tokenizer_pad = partial(tokenize_pad, tokenizer=tokenizer, max_span_len=max_span_len)
     
-    # building tokenizers, word indecies, and train data
-    speech_tokenizer = Tokenizer()
-    speech_tokenizer.fit_on_texts(subject_df['speech'].values)
-    speeches_word_index = speech_tokenizer.word_index
-    speeches_train = speech_tokenizer.texts_to_sequences(subject_df['speech'].values)
-    speeches_train_padded = pad_sequences(speeches_train, maxlen=WINDOW + 1, padding="post")
+    tokenizer_dict = {
+        'tokenizer': tokenizer, 
+        'tokenize_pad': tokenizer_pad, 
+        'word_index': tokenizer.word_index,
+        'max_span_length': max_span_len}
     
+    return tokenizer_dict
 
 
-    tokenizers = {}
-    tokenizers['speech'] = {'tokenizer': speech_tokenizer,
-                            'train': speeches_train,
-                            'train_padded': speeches_train_padded,
-                            'word_index': speeches_word_index}
-
-#     for col in attributes:
-#         tokenizer = Tokenizer()
-#         try:
-#             tokenizer.fit_on_texts(subject_df[col].values)
-#         except:
-#             print(col)
-#             raise
-#         tokenizers[col] = {}
-#         tokenizers[col]['train'] = tokenizer.texts_to_sequences(subject_df[col].values)
-#         tokenizers[col]['word_index'] = tokenizer.word_index
-#         tokenizers[col]['tokenizer'] = tokenizer
-        
-        
-    return tokenizers
-
-
-def build_metadata_dict(feature_columns, subject_df):
-    
-    # one-hot-encoded speaker metadata inputs
-
+def build_metadata_dict(document_df, metadata_columns):
+    """Returns a dictionary with useful properties of tokenizers fit on metadata
+    """
     metadata_dict = {}
-
-    for col in feature_columns:
-        df = subject_df[subject_df[col].unique()].values
-        dim = df.shape[1]
-        metadata_dict[col] = {'input': df, 'input_dim': dim}
+    
+    for col in metadata_columns:
+        
+        tokenizer = Tokenizer()
+        tokenizer.fit_on_texts(document_df[col])
+    
+        metadata_dict[col] = {
+            'tokenizer': tokenizer,
+            'tokenize': tokenizer.texts_to_sequences,
+            'token_index': tokenizer.word_index, 
+            'input_dim': len(tokenizer.word_index)}        
         
     return metadata_dict
 
