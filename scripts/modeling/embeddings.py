@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
@@ -26,6 +27,7 @@ def fetch_embeddings(embeddings_dim = EMBEDDING_DIM):
     embeddings_index = pd.read_csv(path).to_dict(orient = 'list')
     
     return embeddings_index
+
 
 
 def build_embedding_matrix(word_index, embeddings_index):

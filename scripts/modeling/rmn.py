@@ -1,26 +1,49 @@
+#==================#
+#=*= RMN Module =*=#
+#==================#
+
+# RMN Class for training Relationship Modeling Networks 
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import tensorflow as tf
 import tensorflow.keras.backend as K
+from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape
+from tensorflow.keras.models import load_model, model_from_json
 
-from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Reshape
 from embeddings import EMBEDDING_DIM
+from helper import pickle_object, load_pickled_object
 
 
 # constants
 MAX_SPAN_LENGTH = 50
 NUM_TOPICS = 20
+
 OPTIMIZER = 'adam'
+BATCH_SIZE = 50
+EPOCHS = 5
+
+RMN_TAG = "rmn_%s"
+MODEL = "model.h5"
+ARCH = "architecture"
+ATTR = "attributes"
 
 
 class RMN(object):
+    """
+    Class for constructing a Relationship Modeling Network
+    """
     
     def __init__(self):
         
+        # model attributes
         self.num_topics = NUM_TOPICS
-        
         self.embedding_matrix = None
         self.tokenizer_dict = None
         self.metadata_dict = None
         
+        # models 
         self.model = None
         self.topic_model = None
         
@@ -125,7 +148,7 @@ class RMN(object):
         """Preps metadata for training or prediction
         """
         metadata_ids = [np.array(self.metadata_dict[col]['tokenize'](df[col]))
-                        for col in metadata_dict.keys()]
+                        for col in self.metadata_dict.keys()]
 
         return metadata_ids
         
@@ -153,6 +176,62 @@ class RMN(object):
         return topic_preds
     
     
-    # def save_rmn(self, name, save_path):
+    def fit(self, df, batch_size = BATCH_SIZE, epochs = EPOCHS):
+        
+        inputs = self.prep_inputs(df)
+        y_true = self.prep_y(df['document'])
+        
+        self.model.fit(x = inputs, 
+                       y = y_true, 
+                       batch_size = batch_size, 
+                       epochs = epochs)
+
+    
+    def save_rmn(self, name, save_path):
+        """
+        Save the model's weights, architecture and attributes
+        """
+        
+        # assemble attribute dictionary
+        attribute_dict = {
+            'num_topics': self.num_topics,
+            'emedding_matrix': self.embedding_matrix,
+            'tokenizer_dict': self.tokenizer_dict,
+            'metadata_dict': self.metadata_dict}
+        
+        # make directory for model
+        model_path = os.path.join(save_path, RMN_TAG % name)
+        os.mkdir(model_path)
+        
+        # save model weights
+        self.model.save(os.path.join(model_path, MODEL))
+        
+        # save model architecture
+        pickle_object(self.model.to_json(), os.path.join(model_path, ARCH))
+        
+        # save model attributes
+        pickle_object(attribute_dict, os.path.join(model_path, ATTR))
+        
+        
+    def load_rmn(self, name, save_path):
+        """
+        Load the model, weights, architecture and attributes from a saved model
+        """
+        
+        # make directory for model
+        model_path = os.path.join(save_path, RMN_TAG % name)
+        
+        # Load architecture and weights
+        self.model = model_from_json(load_pickled_object(os.path.join(model_path, ARCH)))
+        self.model.load_weights(os.path.join(model_path, MODEL))
+        
+        # load attributes
+        attributes_dict = load_pickled_object(os.path.join(model_path, ATTR))
+        
+        # update attributes
+        self.num_topics = attributes_dict['num_topics']
+        self.embedding_matrix = attributes_dict['emedding_matrix']
+        self.tokenizer_dict = attributes_dict['tokenizer_dict']
+        self.metadata_dict = attributes_dict['metadata_dict']
         
         
