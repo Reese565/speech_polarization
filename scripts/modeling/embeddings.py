@@ -13,7 +13,6 @@ os.chdir("../assembly/")
 from constant import EMBEDDINGS
 
 
-
 # constants
 GLOVE_DIMS = [50, 100, 200, 300]
 EMBEDDING_DIM = GLOVE_DIMS[0]

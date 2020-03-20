@@ -7,6 +7,9 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+import os
+import numpy as np
+
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape
@@ -14,7 +17,7 @@ from tensorflow.keras.models import load_model, model_from_json
 
 from embeddings import EMBEDDING_DIM
 from helper import pickle_object, load_pickled_object
-
+from vector_math import find_nn_cos
 
 # constants
 MAX_SPAN_LENGTH = 50
@@ -134,7 +137,6 @@ class RMN(object):
         
         self.topic_model = topic_model
     
-    
     def prep_y(self, y):
         """Returns the average of the vectors in each span of text
         """
@@ -233,5 +235,26 @@ class RMN(object):
         self.embedding_matrix = attributes_dict['emedding_matrix']
         self.tokenizer_dict = attributes_dict['tokenizer_dict']
         self.metadata_dict = attributes_dict['metadata_dict']
+       
+    
+    def inspect_topics(self, k_neighbors=10):
+        """
+        Ouput the nearest neighbors of every topic vector in
+        the model's topic layer
+        """
+    
+        # get embedding matrix, dim = [num_words, embedding_dim]
+        E = self.embedding_matrix
         
+        # get topic matrix, dim = [num_topics, embedding_dim]
+        Wd = self.model.get_layer('Wd').get_weights()[0].T
         
+        for i in range(Wd.shape[0]):
+            
+            neighbors, sim = find_nn_cos(Wd[i], E, k_neighbors)
+            words = [self.tokenizer_dict['tokenizer'].index_word[v] for v in neighbors]
+            
+            print(20*"=" +"\n")
+            print("Topic", i)
+            print(words)
+            
