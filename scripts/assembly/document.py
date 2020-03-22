@@ -165,5 +165,9 @@ def load_documents(subjects, read_path):
     subject_df_list = [pd.read_csv(os.path.join(read_path, DOCUMENT % s), sep ="|") for s in subjects]
     documents_df = pd.concat(subject_df_list)
     
+    # correct certain types 
+    documents_df['speakerid'] = documents_df['speakerid'].astype(int).astype(str)
+    documents_df['congress'] = documents_df['congress'].astype(str)
+    
     return documents_df
     

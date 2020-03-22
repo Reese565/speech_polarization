@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
@@ -10,7 +11,6 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 os.chdir("../assembly/")
 from constant import EMBEDDINGS
-
 
 
 # constants
@@ -28,13 +28,18 @@ def fetch_embeddings(embeddings_dim = EMBEDDING_DIM):
     return embeddings_index
 
 
-def build_embedding_matrix(speeches_word_index, embeddings_index):
 
-    embedding_matrix = np.zeros((len(speeches_word_index) + 1, EMBEDDING_DIM))
-    for word, i in speeches_word_index.items():
+def build_embedding_matrix(word_index, embeddings_index):
+
+    embedding_dim = len(embeddings_index['the'])
+    embedding_matrix = np.zeros((len(word_index) + 1, embedding_dim))
+    for word, i in word_index.items():
         embedding_vector = embeddings_index.get(word)
+        
         if embedding_vector is not None:
             # words not found in embedding index will be all-zeros.
-            embedding_matrix[i] = embedding_vector
+            embedding_matrix[i] = embedding_vector 
+            
+    embedding_matrix = embedding_matrix.astype('float16')
     
     return embedding_matrix
