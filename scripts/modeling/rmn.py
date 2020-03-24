@@ -22,6 +22,7 @@ from vector_math import find_nn_cos
 # constants
 MAX_SPAN_LENGTH = 50
 NUM_TOPICS = 20
+LAMBDA = 5.0
 
 OPTIMIZER = 'adam'
 BATCH_SIZE = 50
@@ -40,8 +41,11 @@ class RMN(object):
     
     def __init__(self):
         
-        # model attributes
+        # model parameters
         self.num_topics = NUM_TOPICS
+        self.lamb = LAMBDA
+        
+        # model attrbiutes
         self.embedding_matrix = None
         self.tokenizer_dict = None
         self.metadata_dict = None
@@ -56,7 +60,7 @@ class RMN(object):
         return self.embedding_matrix.shape[1]
     
     
-    def model_loss(self, layer, lamb = 1.0):
+    def model_loss(self, layer):
         """Custom loss function to engourage 
         orthoganality of dictionary matrix R."""
 
@@ -71,7 +75,7 @@ class RMN(object):
 
             orth_penalty = K.sqrt(K.sum(K.square(RR_t - Id_mat)))
 
-            return hinge_loss + lamb*orth_penalty
+            return hinge_loss + self.lamb * orth_penalty
 
         return custom_loss
     
