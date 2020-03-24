@@ -15,7 +15,6 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape
 from tensorflow.keras.models import load_model, model_from_json
 
-from embeddings import EMBEDDING_DIM
 from helper import pickle_object, load_pickled_object
 from vector_math import find_nn_cos
 
@@ -84,7 +83,7 @@ class RMN(object):
         """Connstruct the RMN model architecture
         """
         # document span input
-        vt = Input(shape=(self.tokenizer_dict['max_span_length'], ), name='Span.Input')
+        vt = Input(shape=(self.embedding_dim, ), name='Span.Input')
     
         input_layers = [vt]
         embedding_layers = [vt]
@@ -261,4 +260,3 @@ class RMN(object):
             print(20*"=" +"\n")
             print("Topic", i)
             print(words)
-            
