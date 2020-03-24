@@ -12,8 +12,13 @@ GEN_DATA_PATH = "gs://rwc1/gen-data/"
 
 HB_PATH = os.path.join(DATA_PATH, "hein-bound/")
 GEN_HB_PATH = os.path.join(GEN_DATA_PATH, "gen-hein-bound/")
+GEN_HB_PATH_2 = os.path.join(GEN_DATA_PATH, "gen-hein-bound-2/")
+
 DOC_PATH = os.path.join(GEN_DATA_PATH, "doc/")
-DOC_SAMPLE_PATH = os.path.join(DOC_PATH, "doc/doc-sample/")
+DOC_ALL_PATH = os.path.join(DOC_PATH, "doc-all/")
+DOC_PROPER_PATH = os.path.join(DOC_PATH, "doc-proper/")
+DOC_SAMPLE_PATH = os.path.join(DOC_PATH, "doc-sample/")
+
 EMBEDDINGS = os.path.join(DATA_PATH, "embeddings/")
 
 

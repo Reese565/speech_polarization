@@ -7,7 +7,7 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 # constants
-MAX_TOKENS = 50
+MAX_TOKENS = 80
 
 
 def ohe_attributes(subject_df):
@@ -21,7 +21,7 @@ def ohe_attributes(subject_df):
 
     # one-hot-encode speaker metadata
     for col in attributes:
-        subject_df = pd.concat([subject_df,pd.get_dummies(subject_df[col])], axis = 1)
+        subject_df = pd.concat([subject_df, pd.get_dummies(subject_df[col])], axis = 1)
 
     return subject_df
 

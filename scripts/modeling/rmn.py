@@ -14,6 +14,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape
 from tensorflow.keras.models import load_model, model_from_json
+from tensorflow.keras.regularizers import Regularizer
 
 from helper import pickle_object, load_pickled_object
 from vector_math import find_nn_cos
@@ -59,22 +60,17 @@ class RMN(object):
         return self.embedding_matrix.shape[1]
     
     
-    def model_loss(self, layer):
-        """Custom loss function to engourage 
-        orthoganality of dictionary matrix R."""
-
-        R = K.transpose(layer)
-        
+    def model_loss(self):
+        """Hinge loss function.
+        """
         def custom_loss(y_true, y_pred):
+            # hinge_loss
+            y_true_normalized = K.l2_normalize(y_true, axis=-1)
+            y_pred_normalized = K.l2_normalize(y_pred, axis=-1)
+            dot_product = K.sum(y_true_normalized * y_pred_normalized, axis=-1)
+            hinge_loss = K.mean(K.maximum(0., 1. - dot_product))
 
-            hinge_loss = tf.keras.losses.hinge(y_true, y_pred)
-
-            RR_t = K.dot(R, K.transpose(R))
-            Id_mat = K.eye(self.embedding_dim)
-
-            orth_penalty = K.sqrt(K.sum(K.square(RR_t - Id_mat)))
-
-            return hinge_loss + self.lamb * orth_penalty
+            return hinge_loss 
 
         return custom_loss
     
@@ -121,12 +117,12 @@ class RMN(object):
         rt = Dense(units = self.embedding_dim,
                    input_shape = (self.num_topics, ),
                    activation = "linear",
-                   # kernel_regularizer = Orthoganal(),
+                   kernel_regularizer = Orthogonality(self.lamb),
                    name = "R")(dt)
 
         # compile
         model = tf.keras.Model(inputs=input_layers, outputs=rt)
-        model.compile(optimizer = OPTIMIZER, loss = self.model_loss(rt))
+        model.compile(optimizer = OPTIMIZER, loss = self.model_loss())
 
         self.model = model
     
@@ -260,3 +256,24 @@ class RMN(object):
             print(20*"=" +"\n")
             print("Topic", i)
             print(words)
+            
+            
+
+# Orthogonality Regularizer #
+
+class Orthogonality(Regularizer):
+    """Regularizer for discouraging non-orthogonal components.
+    
+    # Arguments
+        lamb: Float; regularization penalty weight
+    """
+
+    def __init__(self, lamb = 1.):
+        self.lamb = lamb
+
+    def __call__(self, R):
+        RRT = K.dot(R, K.transpose(R))
+        I = K.eye(int(RRT.shape[0]))
+        penalty = self.lamb * K.sqrt(K.sum(K.square(RRT - I)))
+        
+        return penalty

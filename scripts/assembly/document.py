@@ -18,9 +18,9 @@ from preprocess import *
 
 
 # constants
-AVG_CHARS_PER_TOKEN = 5
-MIN_TOKENS = 50
-WINDOW = MIN_TOKENS * AVG_CHARS_PER_TOKEN
+AVG_CHARS_PER_TOKEN = 7
+MIN_TOKENS = 200
+
 
 speaker_info_cols = [ 
     "speakerid", 
@@ -34,71 +34,67 @@ speaker_info_cols = [
 
 #=*= Functions for finding documents in speeches =*=#
 
-def save_subject_documents(subject, assemble_func, write_path):
+def save_session_documents(
+    session, 
+    subjects, 
+    speech_path, 
+    write_path, 
+    min_tokens=MIN_TOKENS, 
+    window_tokens=MIN_TOKENS):
     
     # get documents
-    df = assemble_func(subject)
-
+    df = session_subject_docs(session, subjects, speech_path, min_tokens, window_tokens)
+    
     # write
-    df.to_csv(os.path.join(write_path, DOCUMENT % subject), sep="|", index=False)
+    session_str = format(session, '03d')
+    df.to_csv(os.path.join(write_path, DOCUMENT % session_str), sep="|", index=False)
     
-    # update
-    print(subject, "DOCUMENTS MADE")
-
-
-def assemble_subject_docs(
-    subject,
-    sessions,  
-    speech_path, 
-    min_tokens=MIN_TOKENS, 
-    window=WINDOW):
-    """
-    Returns a pandas dataframe of speech subsets found by 
-    subject_docs_func for every session in sessions
-    """
+    # report
+    print("DOCUMENTS MADE for session %s " % session)
     
-    get_subject_docs = partial(subject_docs,
-                               span_finder=make_span_finder(subject, window),
-                               speech_path=speech_path,
-                               min_tokens=min_tokens)
-    
-    subject_df = pd.concat([get_subject_docs(s) for s in sessions])
-    subject_df["subject"] = subject
-    
-    return subject_df
 
-
-def subject_docs(
+def session_subject_docs(
     session, 
-    span_finder, 
+    subjects, 
     speech_path, 
-    min_tokens):
-    """Returns a pandas dataframe of speech subsets related to the inputted subject
-    """
+    min_tokens = MIN_TOKENS, 
+    window_tokens = MIN_TOKENS):
     
-    # read session dataframes
+    # load session
     session_str = format(session, '03d') 
     speeches = pd.read_csv(os.path.join(speech_path, SPEECHES % session_str), sep = "|")
     speaker_map = pd.read_csv(os.path.join(HB_PATH, SPEAKER_MAP % session_str), sep = "|")
     
     # merge
-    df = (speaker_map[speaker_info_cols + ["speech_id"]]
+    df_rows = (speaker_map[speaker_info_cols + ["speech_id"]]
       .merge(speeches, on="speech_id", how="right")
       .drop("speech_id", axis=1)
       .dropna()
-      .to_numpy())
-    
+      .apply(tuple, axis=1)
+      .to_list())
     
     # filter for min character length length, find spans    
-    rows = filter(lambda r: len(r[-1]) > min_tokens*AVG_CHARS_PER_TOKEN, map(tuple, df))
-    rows = map(lambda r: r[:-1] + (span_finder(r[-1]),) , rows)
-    rows = filter(lambda r: r[-1] is not None, rows)
+    df_rows = list(filter(lambda r: len(r[-1]) > min_tokens * AVG_CHARS_PER_TOKEN, df_rows))
     
-    # make dataframe, add session
-    subject_df = pd.DataFrame(rows, columns=speaker_info_cols + ["document"])
-    subject_df["congress"] = session
-    
-    return subject_df
+    subject_df_list = []
+    for subject in subjects:
+        
+        span_finder = make_span_finder(subject, window=window_tokens * AVG_CHARS_PER_TOKEN)
+        
+        rows = list(map(lambda r: r[:-1] + (span_finder(r[-1]), ) , df_rows))
+        rows = list(filter(lambda r: r[-1] is not None, rows))
+        
+        subject_df = pd.DataFrame(rows, columns=speaker_info_cols + ["document"])
+        subject_df["subject"] = subject
+        
+        subject_df_list.append(subject_df)
+      
+    # session df
+    df = pd.concat(subject_df_list) 
+    df['session'] = session
+        
+    return df
+
 
 
 def make_span_finder(subject, window):
@@ -117,7 +113,7 @@ def find_subject_span(d, keywords, window):
     """
     
     # search
-    search = re.search("(" + "|".join(keywords) + ")", d)
+    search = re.search(r'\b(' + r'|'.join(keywords) + ')', d)
     if not search: return None
     
     # locate the first match
@@ -170,4 +166,21 @@ def load_documents(subjects, read_path):
     documents_df['congress'] = documents_df['congress'].astype(str)
     
     return documents_df
+    
+    
+def load_documents(sessions, read_path):
+    """
+    Returns a dataframe of documents belonging to the given sessions
+    """
+    # load data
+    session_strs = [format(s, '03d') for s in sessions]
+    df_list = [pd.read_csv(os.path.join(read_path, DOCUMENT % s), sep = "|") for s in session_strs]
+    df = pd.concat(df_list)
+    
+    # correct certain types
+    df['speakerid'] = df['speakerid'].astype(int).astype(str)
+    df['session'] = df['session'].astype(str)
+    
+    return df
+    
     

@@ -8,32 +8,40 @@
 
 
 import time
-import pandas as pd
+from functools import partial
 
 from multiprocessing import cpu_count
 from concurrent.futures import ProcessPoolExecutor
 
 from constant import SESSIONS
-from preprocess import dense_preprocess, make_session_preprocessor
+from preprocess import *
 
 # constants
 N_CORES = cpu_count()
-LOCAL_PATH = "/home/rocassius/data/gen-hein-bound/"
-
-import numpy as np
-SESSIONS = [format(s, '03d') for s in np.arange(86, 91)]
+LOCAL_PATH = "/home/rocassius/gen-data/gen-hein-bound-2/"
+    
+SESSIONS = [format(s, '03d') for s in range(43, 50)] 
+print(SESSIONS)
     
 def main():
     
     # time it
     start = time.time()
+    
+    stop_words = stopword_regex(
+        manual_stopwords +
+        additional_stopwords +
+        us_states_stopwords +
+        name_stopwords)
 
     # create session preprocessor
-    preprocess_session = make_session_preprocessor(dense_preprocess, LOCAL_PATH)
+    preprocess_func = partial(dense_preprocess, stopword = stop_words) 
+    preprocess_this_session = make_session_preprocessor(preprocess_func, LOCAL_PATH, parallel=False)
+
 
     # execute in parallel
     with ProcessPoolExecutor(max_workers = N_CORES) as executor:
-        executor.map(preprocess_session, SESSIONS)       
+        executor.map(preprocess_this_session, SESSIONS)       
 
     end = time.time()
     elapsed = end - start
