@@ -24,14 +24,22 @@ MAX_SPAN_LENGTH = 50
 NUM_TOPICS = 20
 LAMBDA = 5.0
 
+# hyperparameters
 OPTIMIZER = 'adam'
 BATCH_SIZE = 50
 EPOCHS = 5
 
+# saving tags
 RMN_TAG = "rmn_%s"
 MODEL = "model.h5"
-ARCH = "architecture"
 ATTR = "attributes"
+
+# attribute keys
+N_TOP_KEY = 'num_topics'
+LAMB_KEY  = 'lambda'
+EMBED_KEY = 'emedding_matrix'
+TOKEN_KEY = 'tokenizer_dict'
+META_KEY  = 'metadata_dict'
 
 
 class RMN(object):
@@ -186,7 +194,6 @@ class RMN(object):
                        y = y_true, 
                        batch_size = batch_size, 
                        epochs = epochs)
-
     
     def save_rmn(self, name, save_path):
         """
@@ -195,20 +202,18 @@ class RMN(object):
         
         # assemble attribute dictionary
         attribute_dict = {
-            'num_topics': self.num_topics,
-            'emedding_matrix': self.embedding_matrix,
-            'tokenizer_dict': self.tokenizer_dict,
-            'metadata_dict': self.metadata_dict}
+            N_TOP_KEY:  self.num_topics,
+            LAMB_KEY:   self.lamb,
+            EMBED_KEY:  self.embedding_matrix,
+            TOKEN_KEY:  self.tokenizer_dict,
+            META_KEY:   self.metadata_dict}
         
         # make directory for model
         model_path = os.path.join(save_path, RMN_TAG % name)
         os.mkdir(model_path)
         
         # save model weights
-        self.model.save(os.path.join(model_path, MODEL))
-        
-        # save model architecture
-        pickle_object(self.model.to_json(), os.path.join(model_path, ARCH))
+        self.model.save_weights(os.path.join(model_path, MODEL))
         
         # save model attributes
         pickle_object(attribute_dict, os.path.join(model_path, ATTR))
@@ -222,19 +227,22 @@ class RMN(object):
         # make directory for model
         model_path = os.path.join(save_path, RMN_TAG % name)
         
-        # Load architecture and weights
-        self.model = model_from_json(load_pickled_object(os.path.join(model_path, ARCH)))
-        self.model.load_weights(os.path.join(model_path, MODEL))
-        
         # load attributes
         attributes_dict = load_pickled_object(os.path.join(model_path, ATTR))
         
         # update attributes
-        self.num_topics = attributes_dict['num_topics']
-        self.embedding_matrix = attributes_dict['emedding_matrix']
-        self.tokenizer_dict = attributes_dict['tokenizer_dict']
-        self.metadata_dict = attributes_dict['metadata_dict']
-       
+        self.num_topics       = attributes_dict[N_TOP_KEY]
+        self.lamb             = attributes_dict[LAMB_KEY]
+        self.embedding_matrix = attributes_dict[EMBED_KEY]
+        self.tokenizer_dict   = attributes_dict[TOKEN_KEY]
+        self.metadata_dict    = attributes_dict[META_KEY]
+        
+        # construct identical model architecture
+        self.build_model()
+        
+        # Load weights
+        self.model.load_weights(os.path.join(model_path, MODEL))
+        
     
     def inspect_topics(self, k_neighbors=10):
         """
@@ -256,9 +264,8 @@ class RMN(object):
             print(20*"=" +"\n")
             print("Topic", i)
             print(words)
-            
-            
-
+    
+    
 # Orthogonality Regularizer #
 
 class Orthogonality(Regularizer):
