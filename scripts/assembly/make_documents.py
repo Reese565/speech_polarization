@@ -43,7 +43,6 @@ def main():
     end = time.time()
     elapsed = end - start
 
-    print("HERE")
     # report
     print("SUCCESS, took", round(elapsed / 60, 2), "minutes")
      

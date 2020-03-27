@@ -12,6 +12,7 @@ from analysis import *
 SUB = 'subject'
 SPEAK = 'speakerid'
 PARTY = 'party'
+SESS = 'session'
 # party constants
 R = 'R'
 D = 'D'
@@ -60,8 +61,7 @@ class RMN_Analyzer(object):
     def bool_subset(self, col, value):
         """
         Returns a boolean vector for each observation in the
-        dataframe indicating whether it meets the col = value condition
-        
+        dataframe indicating whether it meets the col == value condition
         """
         assert col in self.df.columns
         return self.df[col] == value
@@ -157,7 +157,7 @@ class RMN_Analyzer(object):
         samp_index_R = self.sample_indices(index_R, n)
         samp_index_D = self.sample_indices(index_D, n)
     
-        return self.compute_JS(index_R, index_D)
+        return self.compute_JS(samp_index_R, samp_index_D)
     
     
     def group_js(self, conditions, n):
@@ -229,6 +229,10 @@ class RMN_Analyzer(object):
         
         # indicies meeting the conditions
         cond_index = self.cond_index(conditions)
+        
+        # return None if indices are insufficient
+        if len(cond_index)==0:
+            return None
         
         if n is None:
             return self.compute_HH(cond_index)
