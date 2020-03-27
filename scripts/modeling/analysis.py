@@ -53,9 +53,9 @@ def mean_CI(x, as_dict=True):
     mean_ci = np.array((mean,) + CI)
     
     if as_dict:        
-        return {'estimate': mean_ci[0],
-                'lower':    mean_ci[1],
-                'upper':    mean_ci[2]}
+        return {'mean':  mean_ci[0],
+                'lower': mean_ci[1],
+                'upper': mean_ci[2]}
     else:
         return mean_ci
 

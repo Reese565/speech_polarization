@@ -5,16 +5,20 @@
 # Class for analyzing an RMN
 
 import numpy as np
+import pandas as pd
 from analysis import *
 
-# constants
-SUB_KEY = 'subject'
-SPEAKER = 'speakerid'
+# variable constants
+SUB = 'subject'
+SPEAK = 'speakerid'
 PARTY = 'party'
-
 # party constants
-REP = 'R'
-DEM = 'D'
+R = 'R'
+D = 'D'
+# metric constants
+JS = 'js'
+HH = 'hh'
+N_REC = 'n_records'
 
 
 class RMN_Analyzer(object):
@@ -121,7 +125,7 @@ class RMN_Analyzer(object):
         return mean_CI(hh_list)
           
     
-    def inter_party_js(self, subject, n):
+    def inter_party_js(self, conditions, n):
         """
         Returns the estimated inter party JS divergence and a CI.
         
@@ -142,8 +146,8 @@ class RMN_Analyzer(object):
             self.predict_topics()
         
         # find R and D indicies on the subject
-        index_R = self.cond_index({PARTY: REP, SUB_KEY: subject})
-        index_D = self.cond_index({PARTY: DEM, SUB_KEY: subject})
+        index_R = self.cond_index({**conditions, **{PARTY: R}})
+        index_D = self.cond_index({**conditions, **{PARTY: D}})
         
         # return None if indices are insufficient
         if len(index_R)==0 or len(index_D)==0:
@@ -167,7 +171,7 @@ class RMN_Analyzer(object):
         
         Args:
         - conditions: (dict) dictionary of conditions
-        - n      : (int) sample size
+        - n         : (int) sample size
         
         Returns: a numpy array of length 3, where index...
         - 0 is the mean divergence point estimate:
@@ -182,7 +186,7 @@ class RMN_Analyzer(object):
         cond_index = self.cond_index(conditions)
         
         # Return none if there are fewer than 2 speakers
-        if self.df.loc[cond_index][SPEAKER].nunique() < 2:
+        if self.df.loc[cond_index][SPEAK].nunique() < 2:
             return None
         
         # Sample index pairs
@@ -190,7 +194,7 @@ class RMN_Analyzer(object):
         while len(index_AB) < n:
             a_b = self.sample_indices(cond_index, n=2)
             # include samples whose speakers are different
-            if self.df.loc[a_b][SPEAKER].nunique() == 2:
+            if self.df.loc[a_b][SPEAK].nunique() == 2:
                 index_AB.append(a_b)
         
         index_AB = np.asarray(index_AB)
@@ -231,3 +235,82 @@ class RMN_Analyzer(object):
         else:
             samp_index = self.sample_indices(cond_index, n)
             return self.compute_HH(samp_index)
+        
+        
+    def analyze_subset(self, conditions, n):
+        """
+        Returns a dictionary of analysis metrics for the subset 
+        of records defined by the conditions.
+        
+        Note: It is recommended conditions be on subject
+        
+        Args:
+        - conditions: (dict) dictionary of conditions
+        - n         : (int) sample size for estimation of metrics
+        
+        for the entire dataset and for each subject the following are computed:
+        - n_records, n_records_R
+        - n_records_D
+        - js
+        - js_R
+        - js_D
+        - js_RD
+        - hh
+        - hh_R
+        - hh_D
+        
+        Returns: a dictionary of metrics
+        """
+        # R and D added conditions
+        conditions_R = {**conditions, **{PARTY: R}}
+        conditions_D = {**conditions, **{PARTY: D}}
+        
+        # annotation tags
+        _R = '_' + R
+        _D = '_' + D
+        _RD = _R + D
+        
+        metrics = {
+            # n record data
+            N_REC:    self.n_records(conditions),
+            N_REC+_R: self.n_records(conditions_R),
+            N_REC+_D: self.n_records(conditions_D),
+            # JS divergence data
+            JS:     self.group_js(conditions, n),
+            JS+_R:  self.group_js(conditions_R, n),
+            JS+_D:  self.group_js(conditions_D, n),
+            JS+_RD: self.inter_party_js(conditions, n),
+            # HH index data
+            HH:    self.group_hh(conditions, n),
+            HH+_R: self.group_hh(conditions_R, n),
+            HH+_D: self.group_hh(conditions_D, n)
+        }
+        
+        return metrics
+    
+        
+    def analyze(self, subjects, n):
+        """
+        Returns a dictionary of analysis metrics at the subject level
+        and at the session level (assuming self.df is the data of a
+        single session).
+        
+        Args:
+        - subjects: (array-like) list of subjects
+        - n       : (int) sample size for estimation of metrics
+        
+        Returns: a dictionary of metrics
+        """
+        # analyze entire session dataset
+        dataset_metrics = self.analyze_subset(conditions={}, n=n)
+        
+        # analyze by subject
+        subject_metrics = {}
+        for s in subjects:
+            subject_metrics[s] = self.analyze_subset({SUB: s}, n)
+        
+        metrics = {'dataset' : dataset_metrics, 
+                   'subjects': subject_metrics}
+        
+        return metrics
+        
