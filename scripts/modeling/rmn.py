@@ -14,23 +14,33 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape
 from tensorflow.keras.models import load_model, model_from_json
+from tensorflow.keras.regularizers import Regularizer
 
-from embeddings import EMBEDDING_DIM
+from rmn_data_generator import RMN_DataGenerator
 from helper import pickle_object, load_pickled_object
 from vector_math import find_nn_cos
 
 # constants
 MAX_SPAN_LENGTH = 50
 NUM_TOPICS = 20
+LAMBDA = 5.0
 
+# hyperparameters
 OPTIMIZER = 'adam'
 BATCH_SIZE = 50
 EPOCHS = 5
 
+# saving tags
 RMN_TAG = "rmn_%s"
 MODEL = "model.h5"
-ARCH = "architecture"
 ATTR = "attributes"
+
+# attribute keys
+N_TOP_KEY = 'num_topics'
+LAMB_KEY  = 'lambda'
+EMBED_KEY = 'emedding_matrix'
+TOKEN_KEY = 'tokenizer_dict'
+META_KEY  = 'metadata_dict'
 
 
 class RMN(object):
@@ -40,8 +50,11 @@ class RMN(object):
     
     def __init__(self):
         
-        # model attributes
+        # model parameters
         self.num_topics = NUM_TOPICS
+        self.lamb = LAMBDA
+        
+        # model attrbiutes
         self.embedding_matrix = None
         self.tokenizer_dict = None
         self.metadata_dict = None
@@ -56,22 +69,17 @@ class RMN(object):
         return self.embedding_matrix.shape[1]
     
     
-    def model_loss(self, layer, lamb = 1.0):
-        """Custom loss function to engourage 
-        orthoganality of dictionary matrix R."""
-
-        R = K.transpose(layer)
-        
+    def model_loss(self):
+        """Hinge loss function.
+        """
         def custom_loss(y_true, y_pred):
+            # hinge_loss
+            y_true_normalized = K.l2_normalize(y_true, axis=-1)
+            y_pred_normalized = K.l2_normalize(y_pred, axis=-1)
+            dot_product = K.sum(y_true_normalized * y_pred_normalized, axis=-1)
+            hinge_loss = K.mean(K.maximum(0., 1. - dot_product))
 
-            hinge_loss = tf.keras.losses.hinge(y_true, y_pred)
-
-            RR_t = K.dot(R, K.transpose(R))
-            Id_mat = K.eye(self.embedding_dim)
-
-            orth_penalty = K.sqrt(K.sum(K.square(RR_t - Id_mat)))
-
-            return hinge_loss + lamb*orth_penalty
+            return hinge_loss 
 
         return custom_loss
     
@@ -80,7 +88,7 @@ class RMN(object):
         """Connstruct the RMN model architecture
         """
         # document span input
-        vt = Input(shape=(self.tokenizer_dict['max_span_length'], ), name='Span.Input')
+        vt = Input(shape=(self.embedding_dim, ), name='Span.Input')
     
         input_layers = [vt]
         embedding_layers = [vt]
@@ -118,14 +126,16 @@ class RMN(object):
         rt = Dense(units = self.embedding_dim,
                    input_shape = (self.num_topics, ),
                    activation = "linear",
-                   # kernel_regularizer = Orthoganal(),
+                   kernel_regularizer = Orthogonality(self.lamb),
                    name = "R")(dt)
 
         # compile
         model = tf.keras.Model(inputs=input_layers, outputs=rt)
-        model.compile(optimizer = OPTIMIZER, loss = self.model_loss(rt))
-
+        model.compile(optimizer = OPTIMIZER, loss = self.model_loss())
         self.model = model
+        
+        # build associated topic model
+        self.build_topic_model()
     
     
     def build_topic_model(self, topic_layer = "Wd"):
@@ -178,6 +188,43 @@ class RMN(object):
         return topic_preds
     
     
+    def predict_topics_generator(self, df):
+        """Predict topic distributions with a generator
+        """
+        # Make sure data is not empty
+        assert not df.empty
+
+        # Calculate good batch size, 
+        batch_size = max(1, min(10000, df.shape[0] // 10))
+        n_batches = df.shape[0] // batch_size
+
+        if n_batches < 2: 
+            return self.predict_topics(df)
+        else:
+            # calculate remainder batch size
+            r = df.shape[0] % batch_size
+
+            if r == 0:
+                g_index = df.index[:-batch_size]
+                r_index = df.index[-batch_size:]
+            else:
+                g_index = df.index[:-r]
+                r_index = df.index[-r:]
+
+            # Make generator, predict on generator
+            g = RMN_DataGenerator(self, df.loc[g_index], batch_size=batch_size, shuffle=False)
+
+            # Predict on remainder batch
+            r_pred = self.predict_topics(df.loc[r_index])
+            g_pred = self.topic_model.predict_generator(
+                g, use_multiprocessing=True, workers=10, verbose=1)
+
+            assert r_pred.shape[1] == g_pred.shape[1]
+            topic_preds = np.vstack([g_pred, r_pred])
+
+            return topic_preds
+
+    
     def fit(self, df, batch_size = BATCH_SIZE, epochs = EPOCHS):
         
         inputs = self.prep_inputs(df)
@@ -187,7 +234,6 @@ class RMN(object):
                        y = y_true, 
                        batch_size = batch_size, 
                        epochs = epochs)
-
     
     def save_rmn(self, name, save_path):
         """
@@ -196,20 +242,18 @@ class RMN(object):
         
         # assemble attribute dictionary
         attribute_dict = {
-            'num_topics': self.num_topics,
-            'emedding_matrix': self.embedding_matrix,
-            'tokenizer_dict': self.tokenizer_dict,
-            'metadata_dict': self.metadata_dict}
+            N_TOP_KEY:  self.num_topics,
+            LAMB_KEY:   self.lamb,
+            EMBED_KEY:  self.embedding_matrix,
+            TOKEN_KEY:  self.tokenizer_dict,
+            META_KEY:   self.metadata_dict}
         
         # make directory for model
         model_path = os.path.join(save_path, RMN_TAG % name)
         os.mkdir(model_path)
         
         # save model weights
-        self.model.save(os.path.join(model_path, MODEL))
-        
-        # save model architecture
-        pickle_object(self.model.to_json(), os.path.join(model_path, ARCH))
+        self.model.save_weights(os.path.join(model_path, MODEL))
         
         # save model attributes
         pickle_object(attribute_dict, os.path.join(model_path, ATTR))
@@ -223,19 +267,25 @@ class RMN(object):
         # make directory for model
         model_path = os.path.join(save_path, RMN_TAG % name)
         
-        # Load architecture and weights
-        self.model = model_from_json(load_pickled_object(os.path.join(model_path, ARCH)))
-        self.model.load_weights(os.path.join(model_path, MODEL))
-        
         # load attributes
         attributes_dict = load_pickled_object(os.path.join(model_path, ATTR))
         
         # update attributes
-        self.num_topics = attributes_dict['num_topics']
-        self.embedding_matrix = attributes_dict['emedding_matrix']
-        self.tokenizer_dict = attributes_dict['tokenizer_dict']
-        self.metadata_dict = attributes_dict['metadata_dict']
-       
+        self.num_topics       = attributes_dict[N_TOP_KEY]
+        self.lamb             = attributes_dict[LAMB_KEY]
+        self.embedding_matrix = attributes_dict[EMBED_KEY]
+        self.tokenizer_dict   = attributes_dict[TOKEN_KEY]
+        self.metadata_dict    = attributes_dict[META_KEY]
+        
+        # construct identical model architecture
+        self.build_model()
+        
+        # Load weights
+        self.model.load_weights(os.path.join(model_path, MODEL))
+        
+        # build associated topic model
+        self.build_topic_model()
+        
     
     def inspect_topics(self, k_neighbors=10):
         """
@@ -257,4 +307,23 @@ class RMN(object):
             print(20*"=" +"\n")
             print("Topic", i)
             print(words)
-            
+    
+    
+# Orthogonality Regularizer #
+
+class Orthogonality(Regularizer):
+    """Regularizer for discouraging non-orthogonal components.
+    
+    # Arguments
+        lamb: Float; regularization penalty weight
+    """
+
+    def __init__(self, lamb = 1.):
+        self.lamb = lamb
+
+    def __call__(self, R):
+        RRT = K.dot(R, K.transpose(R))
+        I = K.eye(int(RRT.shape[0]))
+        penalty = self.lamb * K.sqrt(K.sum(K.square(RRT - I)))
+        
+        return penalty
