@@ -16,6 +16,7 @@ from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Re
 from tensorflow.keras.models import load_model, model_from_json
 from tensorflow.keras.regularizers import Regularizer
 
+from rmn_data_generator import RMN_DataGenerator
 from helper import pickle_object, load_pickled_object
 from vector_math import find_nn_cos
 
@@ -131,8 +132,10 @@ class RMN(object):
         # compile
         model = tf.keras.Model(inputs=input_layers, outputs=rt)
         model.compile(optimizer = OPTIMIZER, loss = self.model_loss())
-
         self.model = model
+        
+        # build associated topic model
+        self.build_topic_model()
     
     
     def build_topic_model(self, topic_layer = "Wd"):
@@ -184,6 +187,43 @@ class RMN(object):
         
         return topic_preds
     
+    
+    def predict_topics_generator(self, df):
+        """Predict topic distributions with a generator
+        """
+        # Make sure data is not empty
+        assert not df.empty
+
+        # Calculate good batch size, 
+        batch_size = max(1, min(10000, df.shape[0] // 10))
+        n_batches = df.shape[0] // batch_size
+
+        if n_batches < 2: 
+            return self.predict_topics(df)
+        else:
+            # calculate remainder batch size
+            r = df.shape[0] % batch_size
+
+            if r == 0:
+                g_index = df.index[:-batch_size]
+                r_index = df.index[-batch_size:]
+            else:
+                g_index = df.index[:-r]
+                r_index = df.index[-r:]
+
+            # Make generator, predict on generator
+            g = RMN_DataGenerator(self, df.loc[g_index], batch_size=batch_size, shuffle=False)
+
+            # Predict on remainder batch
+            r_pred = self.predict_topics(df.loc[r_index])
+            g_pred = self.topic_model.predict_generator(
+                g, use_multiprocessing=True, workers=10, verbose=1)
+
+            assert r_pred.shape[1] == g_pred.shape[1]
+            topic_preds = np.vstack([g_pred, r_pred])
+
+            return topic_preds
+
     
     def fit(self, df, batch_size = BATCH_SIZE, epochs = EPOCHS):
         
@@ -242,6 +282,9 @@ class RMN(object):
         
         # Load weights
         self.model.load_weights(os.path.join(model_path, MODEL))
+        
+        # build associated topic model
+        self.build_topic_model()
         
     
     def inspect_topics(self, k_neighbors=10):

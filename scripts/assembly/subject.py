@@ -6,6 +6,19 @@
 
 
 subject_keywords = {
+ 'abortion': ['abortion',
+              'unborn',
+              'fetus',
+              'pro life',
+              'pro choice',
+              'right to choose',
+              'right choose',
+              'roe v wade',
+              'roe wade',
+              'sanctity of life',
+              'sanctity life',
+              'family plan'
+             ],
  'alcohol': ['alcohol',
              'antisaloon',
              'liquor',
@@ -256,21 +269,6 @@ subject_keywords = {
           'domestic violence',
           'gender'
          ],
- 'abortion': ['abortion',
-              'unborn',
-              'fetus',
-              'prolife',
-              'pro life',
-              'prochoice',
-              'pro choice',
-              'right to choose',
-              'right choose',
-              'roe v wade',
-              'roe wade',
-              'sanctity of life',
-              'sanctity life',
-              'family plan'
-             ],
  'money': ['cash',
            'coin',
            'dollar',

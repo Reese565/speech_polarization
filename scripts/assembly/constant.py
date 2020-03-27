@@ -19,6 +19,8 @@ DOC_ALL_PATH = os.path.join(DOC_PATH, "doc-all/")
 DOC_PROPER_PATH = os.path.join(DOC_PATH, "doc-proper/")
 DOC_SAMPLE_PATH = os.path.join(DOC_PATH, "doc-sample/")
 
+TOOLS_PATH = os.path.join(GEN_DATA_PATH, "tools/")
+MODEL_PATH = os.path.join(GEN_DATA_PATH, "models/")
 EMBEDDINGS = os.path.join(DATA_PATH, "embeddings/")
 
 
