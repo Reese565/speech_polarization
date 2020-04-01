@@ -146,6 +146,7 @@ class RMN(object):
             outputs = self.model.get_layer(topic_layer).output)
         
         self.topic_model = topic_model
+        
     
     def prep_y(self, y):
         """Returns the average of the vectors in each span of text
@@ -175,18 +176,75 @@ class RMN(object):
         return inputs
     
     
-    def predict_topics(self, df):
-        """Predicts the topic distributions for a df
+    def predict_y(self, df, use_generator=True):
+        """Predicts the rmn outputs for a df
         """
-        
         # ensure the topic model has been built
         if self.topic_model is None:
             self.build_topic_model()
-            
-        topic_preds = self.topic_model.predict(x=self.prep_inputs(df))
         
-        return topic_preds
+        if use_generator:
+            return self.predict_with_generator(df, self.model)
+        else:
+            return self.predict_(df, self.model)
     
+    
+    def predict_topics(self, df, use_generator=True):
+        """Predicts the topic distributions for a df
+        """        
+        # ensure the topic model has been built
+        if self.topic_model is None:
+            self.build_topic_model()
+        
+        if use_generator:
+            return self.predict_with_generator(df, self.topic_model)
+        else:
+            return self.predict_(df, self.topic_model)
+
+        
+    def predict_(self, df, model):
+        """Makes a predictions for a df with a model
+        """
+        return model.predict(x=self.prep_inputs(df))
+        
+    
+    def predict_with_generator(self, df, model):
+        """Predict topic distributions with a generator
+        """
+        # Make sure data is not empty
+        assert not df.empty
+
+        # Calculate good batch size, 
+        batch_size = max(1, min(10000, df.shape[0] // 10))
+        n_batches = df.shape[0] // batch_size
+
+        if n_batches < 2: 
+            return model.predict(x=self.prep_inputs(df))
+        else:
+            # calculate remainder batch size
+            r = df.shape[0] % batch_size
+
+            if r == 0:
+                g_index = df.index[:-batch_size]
+                r_index = df.index[-batch_size:]
+            else:
+                g_index = df.index[:-r]
+                r_index = df.index[-r:]
+
+            # Make generator
+            g = RMN_DataGenerator(self, df.loc[g_index], batch_size=batch_size, shuffle=False)
+
+            # Predict on remainder batch
+            r_pred = model.predict(x=self.prep_inputs(df.loc[r_index]))
+            # predict on generated batches
+            g_pred = model.predict_generator(g, use_multiprocessing=True, 
+                                             workers=10, verbose=1)
+
+            assert r_pred.shape[1] == g_pred.shape[1]
+            pred = np.vstack([g_pred, r_pred])
+
+            return pred
+
     
     def predict_topics_generator(self, df):
         """Predict topic distributions with a generator
@@ -239,7 +297,6 @@ class RMN(object):
         """
         Save the model's weights, architecture and attributes
         """
-        
         # assemble attribute dictionary
         attribute_dict = {
             N_TOP_KEY:  self.num_topics,
@@ -263,7 +320,6 @@ class RMN(object):
         """
         Load the model, weights, architecture and attributes from a saved model
         """
-        
         # make directory for model
         model_path = os.path.join(save_path, RMN_TAG % name)
         
@@ -286,18 +342,21 @@ class RMN(object):
         # build associated topic model
         self.build_topic_model()
         
+    @property
+    def topic_matrix(self):
+        """Return the topic matric associated with the rmn
+        """
+        # dim = [num_topics, embedding_dim]
+        return self.model.get_layer('Wd').get_weights()[0].T
+    
     
     def inspect_topics(self, k_neighbors=10):
         """
         Ouput the nearest neighbors of every topic vector in
         the model's topic layer
         """
-    
-        # get embedding matrix, dim = [num_words, embedding_dim]
-        E = self.embedding_matrix
-        
-        # get topic matrix, dim = [num_topics, embedding_dim]
-        Wd = self.model.get_layer('Wd').get_weights()[0].T
+        E = self.embedding_matrix # dim = [num_words, embedding_dim]
+        Wd = self.topic_matrix    # dim = [num_topics, embedding_dim]
         
         for i in range(Wd.shape[0]):
             

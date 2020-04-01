@@ -37,6 +37,7 @@ class RMN_Analyzer(object):
         self.rmn = rmn
         self.df = df.reset_index(drop=True)
         self.topic_preds = None
+        self.y_preds = None
         
     @property
     def index(self):
@@ -46,10 +47,13 @@ class RMN_Analyzer(object):
     def predict_topics(self, use_generator=True):
         """Computes the topic predictions for all observations
         """
-        if use_generator:
-            self.topic_preds = self.rmn.predict_topics_generator(self.df)
-        else:
-            self.topic_preds = self.rmn.predict_topics(self.df)
+        self.topic_preds = self.rmn.predict_topics(self.df, use_generator)
+        
+    
+    def predict_y(self, use_generator=True):
+        """Computes the sentence vector predictions for all observations
+        """
+        self.y_preds = self.rmn.predict_y(self.df, use_generator)
         
         
     def sample_indices(self, indices, n):
