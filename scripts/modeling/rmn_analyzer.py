@@ -321,4 +321,51 @@ class RMN_Analyzer(object):
                    'subjects': subject_metrics}
         
         return metrics
+    
+    
+    def shannon_entropy(self):
+        """Returns the Shannon Entropy of every topic prediction
+        """
+        # ensure that the topic predictions exist
+        if self.topic_preds is None:
+            self.predict_topics()
         
+        return shannon_entropy(self.topic_preds)
+    
+    
+    def first_topic_counts(self, conditions={}):
+        """
+        Returns a leaderboard of topics and how many times they 
+        are the primary topic associated with a document.
+        """
+        if self.topic_preds is None:
+            self.predict_topics()
+           
+        cond_index = self.cond_index(conditions)
+        topic_counts = pd.Series(np.argmax(self.topic_preds[cond_index], axis=-1)).value_counts()
+        
+        return topic_counts
+    
+    
+    def topic_use(self, conditions={}):
+        """
+        Returns a leaderboard of topics based on the percentage of 
+        total weight given to them in all of the documents
+        """
+        cond_index = self.cond_index(conditions)
+        topic_sums = pd.Series(np.sum(self.topic_preds[cond_index], axis=0))
+        topic_use = topic_sums.sort_values(ascending=False) / topic_sums.sum()
+        
+        return topic_use
+    
+    
+    def primary_topics(self, conditions={}, k=5):
+        """Returns top k most prominent topics for documents
+        """
+        cond_index = self.cond_index(conditions)
+        primary_topics = np.flip(np.argsort(self.topic_preds[cond_index]))[:,:k]
+        
+        return primary_topics
+    
+    
+    

@@ -7,23 +7,7 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 # constants
-MAX_TOKENS = 80
-
-
-def ohe_attributes(subject_df):
-    
-    # extract speaker metadata attributes
-    attributes = subject_df.columns.drop('speech')
-    
-    # set attributes to string
-    subject_df['speakerid'] = subject_df['speakerid'].astype(str)
-    subject_df['congress'] = subject_df['congress'].astype(str)
-
-    # one-hot-encode speaker metadata
-    for col in attributes:
-        subject_df = pd.concat([subject_df, pd.get_dummies(subject_df[col])], axis = 1)
-
-    return subject_df
+MAX_TOKENS = 20
 
 
 def tokenize_pad(documents, tokenizer, max_span_len):

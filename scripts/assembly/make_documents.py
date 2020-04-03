@@ -19,10 +19,10 @@ from document import *
 
 # constants
 N_CORES = cpu_count()
-SAVE_PATH = "/home/rocassius/gen-data/doc/doc-all"
+SAVE_PATH = "/home/rocassius/gen-data/doc/doc-prayer"
 sessions = list(range(MIN_SESSION, MAX_SESSION+1))
 
-WINDOW_TOKENS = 75
+WINDOW_TOKENS = 40
 
 def main():
     

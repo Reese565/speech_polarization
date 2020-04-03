@@ -41,6 +41,10 @@ def hh_index(p):
     return hhi
 
 
+def shannon_entropy(p):
+    return np.sum(p*-np.log2(p), axis=-1)
+
+
 def mean_CI(x, as_dict=True):
     """
     Returns a numpy array of length 3 with indices as follows:

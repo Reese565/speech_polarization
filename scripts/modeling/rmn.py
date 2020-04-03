@@ -12,7 +12,7 @@ import numpy as np
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape
+from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape, Concatenate
 from tensorflow.keras.models import load_model, model_from_json
 from tensorflow.keras.regularizers import Regularizer
 
@@ -23,7 +23,8 @@ from vector_math import find_nn_cos
 # constants
 MAX_SPAN_LENGTH = 50
 NUM_TOPICS = 20
-LAMBDA = 5.0
+LAMBDA = 1.0
+GAMMA = 1.0
 
 # hyperparameters
 OPTIMIZER = 'adam'
@@ -53,6 +54,7 @@ class RMN(object):
         # model parameters
         self.num_topics = NUM_TOPICS
         self.lamb = LAMBDA
+        self.gamma = GAMMA
         
         # model attrbiutes
         self.embedding_matrix = None
@@ -68,11 +70,23 @@ class RMN(object):
     def embedding_dim(self):
         return self.embedding_matrix.shape[1]
     
+    @property
+    def topic_matrix(self):
+        """Return the topic matrix associated with the rmn"""
+        # dim = [num_topics, embedding_dim]
+        return self.model.get_layer('Wd').get_weights()[0].T
+    
+    @property
+    def tuned_embedding_matrix(self):
+        """Return the current embedding matrix of the rmn"""
+        return rmn.model.get_layer('Span.Embedding').get_weights()[0]
+          
     
     def model_loss(self):
         """Hinge loss function.
         """
         def custom_loss(y_true, y_pred):
+            
             # hinge_loss
             y_true_normalized = K.l2_normalize(y_true, axis=-1)
             y_pred_normalized = K.l2_normalize(y_pred, axis=-1)
@@ -84,14 +98,25 @@ class RMN(object):
         return custom_loss
     
     
-    def build_model(self):
+    def build_model(self, embedding_trainable=False,
+                    gamma = 1., theta = 1., omega = 1., bias_reconstruct=True):
         """Connstruct the RMN model architecture
         """
-        # document span input
-        vt = Input(shape=(self.embedding_dim, ), name='Span.Input')
-    
-        input_layers = [vt]
-        embedding_layers = [vt]
+        # Span Input
+        span_input = Input(shape=(self.tokenizer_dict['max_span_length'],), 
+                           name='Span.Input')
+        span_embedding = Embedding(input_dim=len(self.tokenizer_dict['word_index']) + 1, 
+                                   output_dim=self.embedding_dim, 
+                                   weights=[self.embedding_matrix],
+                                   input_length=self.tokenizer_dict['max_span_length'],
+                                   trainable=embedding_trainable, 
+                                   name = 'Span.Embedding')(span_input)
+        
+        # Take elementwise average over vectors
+        span_avg = Lambda(lambda x: K.mean(x, axis=1), name = "Span.Avg.Layer")(span_embedding)
+
+        input_layers = [span_input]
+        embedding_layers = [span_avg]
         
         for col in self.metadata_dict.keys():
             
@@ -109,23 +134,26 @@ class RMN(object):
             input_layers.append(input_layer)
             embedding_layers.append(embedding_layer)
 
-        # concat speaker metadata embeddings
-        _ht = tf.keras.layers.Concatenate(axis=1, name = 'Concat.Layer')(embedding_layers)
+        # concatenate span vector with metadata embeddings
+        _ht = Concatenate(axis=1, name = 'Concat.Layer')(embedding_layers)
 
         # dense layer
         ht = Dense(units = self.embedding_dim, 
                    input_shape = (_ht.shape[1], ), 
                    activation = "relu", name = "Wh")(_ht)
 
-        # dense layer with softmax activation, (where previous states will eventually be inserted) 
+        # dense layer whose output is a probability distribution
         dt = Dense(units = self.num_topics, 
                    input_shape = (self.embedding_dim, ), 
-                   activation = "softmax", name = "Wd")(ht)
+                   activation = "softmax",
+                   activity_regularizer = Purity(gamma, theta, omega),
+                   name = "Wd")(ht)
 
         # reconstruction layer
         rt = Dense(units = self.embedding_dim,
                    input_shape = (self.num_topics, ),
                    activation = "linear",
+                   use_bias = bias_reconstruct,
                    kernel_regularizer = Orthogonality(self.lamb),
                    name = "R")(dt)
 
@@ -138,6 +166,24 @@ class RMN(object):
         self.build_topic_model()
     
     
+    def set_topic_vectors(self, words):
+        """Set the topic vectors with vectors corresponding to the given words
+        """
+        # get the word ids
+        word_ids = self.tokenizer_dict['tokenize_pad'](words)[:,0]
+        
+        # replicate associated weights up to num_topics
+        weights = np.tile(self.embedding_matrix[word_ids], 
+                          (-(self.num_topics // -len(words)),1))[:self.num_topics]
+        
+        # set weights layer weights
+        r = self.model.get_layer("R")
+        if len(r.get_weights()) == 1:
+            r.set_weights([weights])
+        else:
+            r.set_weights([weights, r.get_weights()[1]])
+        
+        
     def build_topic_model(self, topic_layer = "Wd"):
         """Contruct model whose output is the topic distribution layer
         """
@@ -146,36 +192,36 @@ class RMN(object):
             outputs = self.model.get_layer(topic_layer).output)
         
         self.topic_model = topic_model
-        
+          
     
-    def prep_y(self, y):
-        """Returns the average of the vectors in each span of text
+    def prep_spans(self, documents):
+        """Returns the lists of word ids associated with the text
         """
-        padded_spans = self.tokenizer_dict['tokenize_pad'](y)
-        vector_spans = self.embedding_matrix[padded_spans].mean(axis=1)
-        
-        return vector_spans
+        return self.tokenizer_dict['tokenize_pad'](documents)
     
     
     def prep_metadata(self, df):
         """Preps metadata for training or prediction
         """
-        metadata_ids = [np.array(self.metadata_dict[col]['tokenize'](df[col]))
-                        for col in self.metadata_dict.keys()]
+        metadata_x = [np.array(self.metadata_dict[col]['tokenize'](df[col]))
+                      for col in self.metadata_dict.keys()]
 
-        return metadata_ids
+        return metadata_x
         
     
-    def prep_inputs(self, df):
-        """Preps metadata for training or prediction
+    def prep_X(self, df, for_training=False):
+        """Preps metadata and spans for training or prediction
         """
-        vector_spans = self.prep_y(df['document'])
-        metadata_ids = self.prep_metadata(df)
-        inputs = [vector_spans] + metadata_ids
+        spans_y = self.prep_spans(df['document'])
+        metadata_x = self.prep_metadata(df)
+        X = [spans_y] + metadata_x
         
-        return inputs
-    
-    
+        if for_training:
+            y = self.embedding_matrix[spans_y].mean(axis=1)
+            return X, y
+        else:
+            return X
+
     def predict_y(self, df, use_generator=True):
         """Predicts the rmn outputs for a df
         """
@@ -205,7 +251,7 @@ class RMN(object):
     def predict_(self, df, model):
         """Makes a predictions for a df with a model
         """
-        return model.predict(x=self.prep_inputs(df))
+        return model.predict(x=self.prep_X(df))
         
     
     def predict_with_generator(self, df, model):
@@ -219,11 +265,10 @@ class RMN(object):
         n_batches = df.shape[0] // batch_size
 
         if n_batches < 2: 
-            return model.predict(x=self.prep_inputs(df))
+            return self.predict_(df, model)
         else:
             # calculate remainder batch size
             r = df.shape[0] % batch_size
-
             if r == 0:
                 g_index = df.index[:-batch_size]
                 r_index = df.index[-batch_size:]
@@ -235,63 +280,15 @@ class RMN(object):
             g = RMN_DataGenerator(self, df.loc[g_index], batch_size=batch_size, shuffle=False)
 
             # Predict on remainder batch
-            r_pred = model.predict(x=self.prep_inputs(df.loc[r_index]))
+            r_pred = self.predict_(df.loc[r_index], model)
             # predict on generated batches
-            g_pred = model.predict_generator(g, use_multiprocessing=True, 
-                                             workers=10, verbose=1)
+            g_pred = model.predict_generator(g, use_multiprocessing=True, workers=10, verbose=1)
 
             assert r_pred.shape[1] == g_pred.shape[1]
             pred = np.vstack([g_pred, r_pred])
 
             return pred
-
-    
-    def predict_topics_generator(self, df):
-        """Predict topic distributions with a generator
-        """
-        # Make sure data is not empty
-        assert not df.empty
-
-        # Calculate good batch size, 
-        batch_size = max(1, min(10000, df.shape[0] // 10))
-        n_batches = df.shape[0] // batch_size
-
-        if n_batches < 2: 
-            return self.predict_topics(df)
-        else:
-            # calculate remainder batch size
-            r = df.shape[0] % batch_size
-
-            if r == 0:
-                g_index = df.index[:-batch_size]
-                r_index = df.index[-batch_size:]
-            else:
-                g_index = df.index[:-r]
-                r_index = df.index[-r:]
-
-            # Make generator, predict on generator
-            g = RMN_DataGenerator(self, df.loc[g_index], batch_size=batch_size, shuffle=False)
-
-            # Predict on remainder batch
-            r_pred = self.predict_topics(df.loc[r_index])
-            g_pred = self.topic_model.predict_generator(
-                g, use_multiprocessing=True, workers=10, verbose=1)
-
-            assert r_pred.shape[1] == g_pred.shape[1]
-            topic_preds = np.vstack([g_pred, r_pred])
-
-            return topic_preds
-
-    
-    def fit(self, df, batch_size = BATCH_SIZE, epochs = EPOCHS):
         
-        inputs = self.prep_inputs(df)
-        y_true = self.prep_y(df['document'])
-        
-        self.model.fit(x = inputs, 
-                       y = y_true, 
-                       batch_size = batch_size, 
-                       epochs = epochs)
     
     def save_rmn(self, name, save_path):
         """
@@ -342,27 +339,25 @@ class RMN(object):
         # build associated topic model
         self.build_topic_model()
         
-    @property
-    def topic_matrix(self):
-        """Return the topic matric associated with the rmn
-        """
-        # dim = [num_topics, embedding_dim]
-        return self.model.get_layer('Wd').get_weights()[0].T
     
-    
-    def inspect_topics(self, k_neighbors=10):
+    def inspect_topics(self, which_topics=None, k_neighbors=10, tuned_embedding=False):
         """
         Ouput the nearest neighbors of every topic vector in
         the model's topic layer
         """
-        E = self.embedding_matrix # dim = [num_words, embedding_dim]
-        Wd = self.topic_matrix    # dim = [num_topics, embedding_dim]
+        if which_topics is None:
+            which_topics = range(self.num_topics) 
+        # get embedding matrix   
+        if tuned_embedding:
+            E = self.tuned_embedding_matrix # dim = [num_words, embedding_dim]
+        else:
+            E = self.embedding_matrix
+        Wd = self.topic_matrix  # dim = [num_topics, embedding_dim]
         
-        for i in range(Wd.shape[0]):
-            
+        for i in which_topics:
+            # find nearest neighbors to topic
             neighbors, sim = find_nn_cos(Wd[i], E, k_neighbors)
             words = [self.tokenizer_dict['tokenizer'].index_word[v] for v in neighbors]
-            
             print(20*"=" +"\n")
             print("Topic", i)
             print(words)
@@ -371,18 +366,46 @@ class RMN(object):
 # Orthogonality Regularizer #
 
 class Orthogonality(Regularizer):
-    """Regularizer for discouraging non-orthogonal components.
+    """
+    Regularizer for penalizing non-orthogonal components of a weight matrix.
     
-    # Arguments
-        lamb: Float; regularization penalty weight
+    Args:
+    - lamb: (Float) regularization penalty weight
     """
 
     def __init__(self, lamb = 1.):
         self.lamb = lamb
 
     def __call__(self, R):
+        """Returns a component dependence penalty for matrix R
+        """
         RRT = K.dot(R, K.transpose(R))
-        I = K.eye(int(RRT.shape[0]))
+        I = K.eye(RRT.shape.as_list()[0])
         penalty = self.lamb * K.sqrt(K.sum(K.square(RRT - I)))
         
         return penalty
+    
+    
+# Topic Purity Regularizer #
+
+class Purity(Regularizer):
+    """Regularizer for penalizing highly impure probability distributions
+    """
+    def __init__(self, gamma = 1., theta = 1., omega = 1.):
+        self.gamma = gamma
+        self.theta = theta
+        self.omega = omega
+
+    def __call__(self, p):
+        """Returns the avergage shannon entropy of the distribution(s) p
+        """
+        impurity = K.sum(p*-K.log(p)/K.log(K.constant(2)), axis=-1)
+        concentration = K.max(p, axis=-1)
+        similarity = K.mean(K.dot(p, K.transpose(p)))
+        
+        penalty = (self.gamma * K.mean(impurity) + 
+                   self.theta * K.mean(concentration) + 
+                   self.omega * similarity)
+        
+        return penalty
+    

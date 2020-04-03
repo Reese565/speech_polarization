@@ -7,56 +7,57 @@
 
 subject_keywords = {
  'abortion': ['abortion',
-              'unborn',
+#               'unborn',
               'fetus',
               'pro life',
               'pro choice',
-              'right to choose',
-              'right choose',
+#               'right to choose',
+#               'right choose',
               'roe v wade',
+              'roe vs wade',
               'roe wade',
-              'sanctity of life',
-              'sanctity life',
               'family plan'
              ],
- 'alcohol': ['alcohol',
-             'antisaloon',
-             'liquor',
-             'saloon'
-            ],
+ 'drug_alcohol': ['alcohol',
+                  'antisaloon',
+                  'liquor',
+                  'saloon',
+                  'drug',
+                  'marajuana'
+                  ],
  'budget': ['budget',
             'budget deficit',
             'national debt',
-            'nations debt'
+            'nations debt',
+            r'\bcbo\b'
            ],
- 'business': ['bankrupt',
-              'busi',
-              'sba',
-              'corporat'
-             ],
- 'crime': ['crime',
-           'crimin',
-           'prison'
-          ],
+#  'business': ['bankrupt',
+#               'busi',
+#               'sba',
+#               'corporat'
+#              ],
+#  'crime': ['crime',
+#            'crimin',
+#            'prison'
+#           ],
  'guns': ['gun',
           'firearm',
-          'arms',
           'assault weapon',
           'assault rifle'
-          'nra',
+          r'\bnra\b',
           'rifle',
           'second amendment'
          ],   # nothing should preceed this
- 'drugs': ['drug',
-           'narcot',
-           'heroin',
-           'opium',
-           'marajuana',
-           'crack',
-           'meth'
-          ],
+#  'drugs': ['drug',
+#            'narcot',
+#            'heroin',
+#            'opium',
+#            'marajuana',
+#            'crack',
+#           ],
  'defense': ['army',
              'atom',
+             'arms',
              'bomb',
              'combat',
              'defens',
@@ -68,7 +69,7 @@ subject_keywords = {
              'militar',
              'missil',
              'naval',
-             'navi',
+             'navy',
              'navyyard',
              'prison',
              'soldier',
@@ -76,14 +77,15 @@ subject_keywords = {
              'veteran',
              'war',
              'weapon',
-             'force',
-             'aof',
-             'oef',
+#              'force',
+#              'aof',
+#              'oef',
              'operation eduring freedom',
-             'oif',
+#              'oif',
              'operation iraqi freedom',
              'arms appropriation'
-             'troop'
+             'troop',
+             'coast guard'
             ],
  'economy': ['econom',
              'povert',
@@ -101,25 +103,26 @@ subject_keywords = {
                'teacher',
                'college'
               ],
- 'elections': ['ballot',
-               'elect'
-              ],  # nothing should preceed this or space
- 'environment': ['canyon',
-                 'climat',
-                 'climate change',
-                 'environmental',
-                 'the environment',
-                 'forest',
-                 'pollut',
-                 'drought'
-                ],
- 'federalism': ['confeder',
-                'interst',
-                'government regul',
-                'small gov',
-                'big gov',
-                'secede'
-               ],
+#  'elections': ['ballot',
+#                'elect'
+#               ],  # nothing should preceed this or space
+#  'environment': ['canyon',
+#                  'climat',
+#                  'climate change',
+#                  'environmental',
+#                  'the environment',
+#                  'forest',
+#                  'pollut',
+#                  'drought',
+#                  'contamination'
+#                 ],
+#  'federalism': ['confeder',
+#                 'interst',
+#                 'government regul',
+#                 'small gov',
+#                 'big gov',
+#                 'secede'
+#                ],
  'foreign': ['afghanistan',
              'aid',
              'asia',
@@ -163,20 +166,20 @@ subject_keywords = {
              'troop',
              'vietnam'
             ],
- 'government': ['entitlement',
-                'bureau',
-                'depart',
-                'govern',
-                'highway',
-                'lineitem',
-                'medicaid',
-                'medicar',
-                'municip',
-                'privacy',
-                'regulator',
-                'stimulus',
-                'welfare'
-               ],
+#  'government': ['entitlement',
+#                 'bureau',
+#                 'depart',
+#                 'govern',
+#                 'highway',
+#                 'lineitem',
+#                 'medicaid',
+#                 'medicar',
+#                 'municip',
+#                 'privacy',
+#                 'regulator',
+#                 'stimulus',
+#                 'welfare'
+#                ],
  'health': ['care reform',
             'health care',
             'healthcare',
@@ -185,33 +188,34 @@ subject_keywords = {
             'health insur',
             'insurance coverag',
             'uninsured',
-            'hiv',
+            r'\bhiv\b',
             'medical',
             'medicaid',
             'medicar',
-            'aca',
+#             'aca',
             'affordable care',
             'patient protection'
+            'doctor'
            ],
  'immigration': ['alien',
-                'border',
-                'immigration',
+#                 'border',
+                'immigrat',
                 'undocumented',
                 'refugee',
                 'migrant'
                 ],
- 'justice': ['attorney',
-             'clerk',
-             'court',
-             'freedman',
-             'habeaius',
-             'judicial',
-             'justic',
-             'lawyer',
-             'trial'
-            ],
+#  'justice': ['attorney',
+#              'clerk',
+#              'court',
+#              'freedman',
+#              'habeaius',
+#              'judicial',
+#              'justic',
+#              'lawyer',
+#              'trial'
+#             ],
  'labor': ['employment',
-           'job',
+#            'job',
            'labor',
            'longshoremen',
            'pension',
@@ -224,13 +228,13 @@ subject_keywords = {
            'wage',
            'worker'
           ],
- 'mail': ['freedeliver',
-          'mail',
-          'messeng',
-          'postal',
-          'postmaster',
-          'postoffice'
-         ],
+#  'mail': ['freedeliver',
+#           'mail',
+#           'messeng',
+#           'postal',
+#           'postmaster',
+#           'postoffice'
+#          ],
  'minorities': ['minorities',
                 'people color',
                 'people of color',
@@ -267,41 +271,44 @@ subject_keywords = {
           'planned parenthood',
           'equal pay',
           'domestic violence',
-          'gender'
+          'gender',
+          'rape',
+          'sexual assault'
          ],
- 'money': ['cash',
-           'coin',
-           'dollar',
-           'gold',
-           'monetary',
-           'silver',
-           'tender',
-           'treasur'
-           'benchmark rate'
-          ],
- 'religion': ['buddhi',
-              'catholic',
-              'christian',
-              'hindu',
-              'islam',
-              'jehovah',
-              'jew',
-              'judaism',
-              'mormon',
-              'muslim',
-              'religion'
-             ],
+#  'money': ['cash',
+#            'coin',
+#            'currency',
+#            'dollar',
+#            'gold',
+#            'monetary',
+#            'silver',
+#            'tender',
+#            'treasur'
+#            'benchmark rate'
+#           ],
+#  'religion': ['buddhi',
+#               'catholic',
+#               'christian',
+#               'hindu',
+#               'islam',
+#               'jehovah',
+#               'jew',
+#               'judaism',
+#               'mormon',
+#               'muslim',
+#               'religion'
+#              ],
  'tax': ['estate',
          'excessprofit',
          'internalrevenue',
          'tax',
          'tarrif',
          'capital gains',
-         'income',
-         'corporat'
+         'income tax',
+#          'corporat'
         ],
  'trade': ['export',
-           'import',
+           'imports',
            'payne aldrich',
            'tariff',
            'trade',
@@ -316,7 +323,6 @@ subject_keywords = {
 
 
 # Original subject keywords from Gentzkow et al.
-
 
 # KEYWORDS = "phrase_clusters/keywords.txt"
 # keywords = (pd.read_csv(os.path.join(DATA_PATH, KEYWORDS), sep = "|")
@@ -611,3 +617,18 @@ original_subject_keywords = {
   'tariff',
   'trade',
   'valorem']}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
