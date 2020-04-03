@@ -113,10 +113,10 @@ def find_subject_span(d, keywords, window):
     """
     
     # search
-    search = re.search(r'\b(' + r'|'.join(keywords) + ')', d)
+    search = re.search(r'(' + r'|'.join(keywords) + ')', d)
     if not search: return None
     
-    # locate the first match
+    # locate the first match     found: [80,95] -> (80 - window, 95 + window)
     loc = search.span()
     
     # find lower and upper indices of span

@@ -40,10 +40,7 @@ class RMN_DataGenerator(Sequence):
     def __data_generation(self, indices):
         'Generates data containing batch_size samples' 
         # generate data for indices
-        X = self.rmn.prep_inputs(self.data_df.loc[indices])
-        y = X[0]
-
-        return X, y
+        return self.rmn.prep_X(self.data_df.loc[indices], for_training=True)
     
     
     def __len__(self):
@@ -60,4 +57,3 @@ class RMN_DataGenerator(Sequence):
         X, y = self.__data_generation(indices)
 
         return X, y
-    

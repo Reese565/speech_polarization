@@ -7,39 +7,6 @@
 
 subject_keywords = {
  'abortion': ['abortion',
-<<<<<<< HEAD
-              'unborn',
-              'fetus',
-              'pro life',
-              'pro choice',
-              'right to choose',
-              'right choose',
-              'roe v wade',
-              'roe wade',
-              'sanctity of life',
-              'sanctity life',
-              'family plan'
-             ],
- 'alcohol': ['alcohol',
-             'antisaloon',
-             'liquor',
-             'saloon'
-            ],
- 'budget': ['budget',
-            'budget deficit',
-            'national debt',
-            'nations debt'
-           ],
- 'business': ['bankrupt',
-              'busi',
-              'sba',
-              'corporat'
-             ],
- 'crime': ['crime',
-           'crimin',
-           'prison'
-          ],
-=======
 #               'unborn',
               'fetus',
               'pro life',
@@ -62,7 +29,7 @@ subject_keywords = {
             'budget deficit',
             'national debt',
             'nations debt',
-            '\bcbo\b'
+            r'\bcbo\b'
            ],
 #  'business': ['bankrupt',
 #               'busi',
@@ -73,26 +40,11 @@ subject_keywords = {
 #            'crimin',
 #            'prison'
 #           ],
->>>>>>> reese
  'guns': ['gun',
           'firearm',
           'assault weapon',
           'assault rifle'
-<<<<<<< HEAD
-          'nra',
-          'rifle',
-          'second amendment'
-         ],   # nothing should preceed this
- 'drugs': ['drug',
-           'narcot',
-           'heroin',
-           'opium',
-           'marajuana',
-           'crack',
-           'meth'
-          ],
-=======
-          '\bnra\b',
+          r'\bnra\b',
           'rifle',
           'second amendment'
          ],   # nothing should preceed this
@@ -103,7 +55,6 @@ subject_keywords = {
 #            'marajuana',
 #            'crack',
 #           ],
->>>>>>> reese
  'defense': ['army',
              'atom',
              'arms',
@@ -133,12 +84,8 @@ subject_keywords = {
 #              'oif',
              'operation iraqi freedom',
              'arms appropriation'
-<<<<<<< HEAD
-             'troop'
-=======
              'troop',
              'coast guard'
->>>>>>> reese
             ],
  'economy': ['econom',
              'povert',
@@ -156,27 +103,6 @@ subject_keywords = {
                'teacher',
                'college'
               ],
-<<<<<<< HEAD
- 'elections': ['ballot',
-               'elect'
-              ],  # nothing should preceed this or space
- 'environment': ['canyon',
-                 'climat',
-                 'climate change',
-                 'environmental',
-                 'the environment',
-                 'forest',
-                 'pollut',
-                 'drought'
-                ],
- 'federalism': ['confeder',
-                'interst',
-                'government regul',
-                'small gov',
-                'big gov',
-                'secede'
-               ],
-=======
 #  'elections': ['ballot',
 #                'elect'
 #               ],  # nothing should preceed this or space
@@ -197,7 +123,6 @@ subject_keywords = {
 #                 'big gov',
 #                 'secede'
 #                ],
->>>>>>> reese
  'foreign': ['afghanistan',
              'aid',
              'asia',
@@ -241,22 +166,6 @@ subject_keywords = {
              'troop',
              'vietnam'
             ],
-<<<<<<< HEAD
- 'government': ['entitlement',
-                'bureau',
-                'depart',
-                'govern',
-                'highway',
-                'lineitem',
-                'medicaid',
-                'medicar',
-                'municip',
-                'privacy',
-                'regulator',
-                'stimulus',
-                'welfare'
-               ],
-=======
 #  'government': ['entitlement',
 #                 'bureau',
 #                 'depart',
@@ -271,7 +180,6 @@ subject_keywords = {
 #                 'stimulus',
 #                 'welfare'
 #                ],
->>>>>>> reese
  'health': ['care reform',
             'health care',
             'healthcare',
@@ -280,45 +188,22 @@ subject_keywords = {
             'health insur',
             'insurance coverag',
             'uninsured',
-<<<<<<< HEAD
-            'hiv',
-=======
-            '\bhiv\b',
->>>>>>> reese
+            r'\bhiv\b',
             'medical',
             'medicaid',
             'medicar',
 #             'aca',
             'affordable care',
             'patient protection'
-<<<<<<< HEAD
-           ],
- 'immigration': ['alien',
-                'border',
-                'immigration',
-=======
             'doctor'
            ],
  'immigration': ['alien',
 #                 'border',
                 'immigrat',
->>>>>>> reese
                 'undocumented',
                 'refugee',
                 'migrant'
                 ],
-<<<<<<< HEAD
- 'justice': ['attorney',
-             'clerk',
-             'court',
-             'freedman',
-             'habeaius',
-             'judicial',
-             'justic',
-             'lawyer',
-             'trial'
-            ],
-=======
 #  'justice': ['attorney',
 #              'clerk',
 #              'court',
@@ -329,7 +214,6 @@ subject_keywords = {
 #              'lawyer',
 #              'trial'
 #             ],
->>>>>>> reese
  'labor': ['employment',
 #            'job',
            'labor',
@@ -344,15 +228,6 @@ subject_keywords = {
            'wage',
            'worker'
           ],
-<<<<<<< HEAD
- 'mail': ['freedeliver',
-          'mail',
-          'messeng',
-          'postal',
-          'postmaster',
-          'postoffice'
-         ],
-=======
 #  'mail': ['freedeliver',
 #           'mail',
 #           'messeng',
@@ -360,7 +235,6 @@ subject_keywords = {
 #           'postmaster',
 #           'postoffice'
 #          ],
->>>>>>> reese
  'minorities': ['minorities',
                 'people color',
                 'people of color',
@@ -397,32 +271,6 @@ subject_keywords = {
           'planned parenthood',
           'equal pay',
           'domestic violence',
-<<<<<<< HEAD
-          'gender'
-         ],
- 'money': ['cash',
-           'coin',
-           'dollar',
-           'gold',
-           'monetary',
-           'silver',
-           'tender',
-           'treasur'
-           'benchmark rate'
-          ],
- 'religion': ['buddhi',
-              'catholic',
-              'christian',
-              'hindu',
-              'islam',
-              'jehovah',
-              'jew',
-              'judaism',
-              'mormon',
-              'muslim',
-              'religion'
-             ],
-=======
           'gender',
           'rape',
           'sexual assault'
@@ -450,20 +298,14 @@ subject_keywords = {
 #               'muslim',
 #               'religion'
 #              ],
->>>>>>> reese
  'tax': ['estate',
          'excessprofit',
          'internalrevenue',
          'tax',
          'tarrif',
          'capital gains',
-<<<<<<< HEAD
-         'income',
-         'corporat'
-=======
          'income tax',
 #          'corporat'
->>>>>>> reese
         ],
  'trade': ['export',
            'imports',
@@ -481,7 +323,6 @@ subject_keywords = {
 
 
 # Original subject keywords from Gentzkow et al.
-
 
 # KEYWORDS = "phrase_clusters/keywords.txt"
 # keywords = (pd.read_csv(os.path.join(DATA_PATH, KEYWORDS), sep = "|")
@@ -776,3 +617,5 @@ original_subject_keywords = {
   'tariff',
   'trade',
   'valorem']}
+
+
