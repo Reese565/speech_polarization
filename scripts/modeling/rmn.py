@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+import tensorflow as tf
+import tensorflow.keras.backend as K
+from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking
+=======
 #==================#
 #=*= RMN Module =*=#
 #==================#
@@ -14,7 +22,11 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape
 from tensorflow.keras.models import load_model, model_from_json
+<<<<<<< HEAD
 from tensorflow.keras.regularizers import Regularizer
+=======
+>>>>>>> master
+>>>>>>> reese
 
 from rmn_data_generator import RMN_DataGenerator
 from helper import pickle_object, load_pickled_object
@@ -48,6 +60,16 @@ class RMN(object):
     Class for constructing a Relationship Modeling Network
     """
     
+<<<<<<< HEAD
+    def __init__(self, embedding_dim = EMBEDDING_DIM, num_topics = NUM_TOPICS):
+        self.embedding_dim = embedding_dim
+        self.num_topics = num_topics
+        self.metadata_dict = None
+        self.model = None
+        self.loss = None
+        self.inputs = None
+        self.y_true = None
+=======
     def __init__(self):
         
         # model parameters
@@ -67,6 +89,7 @@ class RMN(object):
     @property
     def embedding_dim(self):
         return self.embedding_matrix.shape[1]
+>>>>>>> master
     
     
     def model_loss(self):
@@ -83,6 +106,27 @@ class RMN(object):
 
         return custom_loss
     
+    def summary(self):
+        """Standard summary function for keras model"""
+        
+        self.model.summary()
+        
+        return None
+    
+    def ingest_inputs(self, embeddings_matrix, train_data):
+        """Feeds and assembles inputs to model"""
+    
+        # avergage span embeddings
+        Vst_train = embeddings_matrix[train_data].mean(axis=1)
+
+        inputs = [Vst_train]
+        for key in self.metadata_dict.keys():
+            inputs.append(self.metadata_dict[key]['input'])
+            
+        self.inputs = inputs
+        self.y_true = Vst_train
+
+        return None
     
     def build_model(self):
         """Connstruct the RMN model architecture
@@ -90,6 +134,20 @@ class RMN(object):
         # document span input
         vt = Input(shape=(self.embedding_dim, ), name='Span.Input')
     
+<<<<<<< HEAD
+    
+    def build_model(self, metadata_dict):
+        """"""
+        
+        self.metadata_dict = metadata_dict
+        
+        # input avg span embeddings
+        vt = Input(shape=(self.embedding_dim,), name='Avg.Span.Embed.Input')
+
+        ## initializing speaker metadata embeddings
+
+=======
+>>>>>>> master
         input_layers = [vt]
         embedding_layers = [vt]
         
@@ -131,7 +189,34 @@ class RMN(object):
 
         # compile
         model = tf.keras.Model(inputs=input_layers, outputs=rt)
+<<<<<<< HEAD
         model.compile(optimizer = OPTIMIZER, loss = self.model_loss())
+=======
+        self.loss = self.model_loss(rt)
+        self.model = model
+
+<<<<<<< HEAD
+        return self
+    
+    
+    def compile_RMN(self, optimizer = OPTIMIZER):
+        
+        self.model.compile(optimizer = optimizer, loss = self.loss)
+        
+        return None
+    
+    def fit(self, batch_size = 1, epochs = 1):
+        
+        inputs = self.inputs
+        y_true = self.y_true
+        
+        self.model.fit(inputs, y_true, batch_size = batch_size, epochs = epochs)
+        
+        return None
+        
+        
+=======
+>>>>>>> reese
         self.model = model
         
         # build associated topic model
@@ -307,6 +392,7 @@ class RMN(object):
             print(20*"=" +"\n")
             print("Topic", i)
             print(words)
+<<<<<<< HEAD
     
     
 # Orthogonality Regularizer #
@@ -327,3 +413,7 @@ class Orthogonality(Regularizer):
         penalty = self.lamb * K.sqrt(K.sum(K.square(RRT - I)))
         
         return penalty
+=======
+            
+>>>>>>> master
+>>>>>>> reese
