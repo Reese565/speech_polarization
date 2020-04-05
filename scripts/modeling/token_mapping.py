@@ -42,7 +42,7 @@ def build_metadata_dict(document_df, metadata_columns):
     
     for col in metadata_columns:
         
-        tokenizer = Tokenizer()
+        tokenizer = Tokenizer(filters='')
         tokenizer.fit_on_texts(document_df[col])
     
         metadata_dict[col] = {
@@ -52,5 +52,3 @@ def build_metadata_dict(document_df, metadata_columns):
             'input_dim': len(tokenizer.word_index)}        
         
     return metadata_dict
-
-
