@@ -113,7 +113,7 @@ class RMN_Analyzer(object):
         """Returns the number of records which have nan predictions
         """
         cond_index = self.cond_index(conditions)
-        return np.isnan(self.topic_preds[cond_index].sum(axis=-1)).sum()
+        return np.isnan(self.topic_preds[cond_index].sum(axis=-1)).sum().item()
     
     
     def compute_JS(self, index_A, index_B, base=2):

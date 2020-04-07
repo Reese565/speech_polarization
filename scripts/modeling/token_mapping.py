@@ -1,12 +1,11 @@
 import os
 import pandas as pd
 
-<<<<<<< HEAD
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-=======
+
 from functools import partial
->>>>>>> master
+
 
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
