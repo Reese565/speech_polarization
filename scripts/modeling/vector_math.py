@@ -39,6 +39,25 @@ def find_nn_cos(v, Wv, k=10):
     return (nns, ds)
 
 
+def inspect_vectors(W, E, index_word, k_neighbors=10):
+    """Inspect and find the nearest neighbors of vectors in W
+    """
+    # nearest neighbor list
+    nn = []
+    for i in range(W.shape[0]):
+        # find nearest neighbors to topic
+        neighbors, sim = find_nn_cos(W[i], E, k_neighbors)
+        words = [index_word[v] for v in neighbors]
+        # update 
+        nn.append(list(zip(words, sim)))
+        # report
+        print(20*"=" +"\n")
+        print("Topic", i)
+        print(words)
+        
+    return nn
+
+
 def analogy(vA, vB, vC, Wv, k=5):
     """Compute a linear analogy in vector space, as described in the async.
 

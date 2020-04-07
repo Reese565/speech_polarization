@@ -15,6 +15,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Embedding, Dense, Lambda, Input, Masking, Reshape, Concatenate
 from tensorflow.keras.models import load_model, model_from_json
 from tensorflow.keras.regularizers import Regularizer
+from tensorflow.keras.optimizers import Adam
 
 from rmn_data_generator import RMN_DataGenerator
 from helper import pickle_object, load_pickled_object
@@ -38,10 +39,10 @@ ATTR = "attributes"
 
 # attribute keys
 N_TOP_KEY = 'num_topics'
-LAMB_KEY  = 'lambda'
 EMBED_KEY = 'emedding_matrix'
 TOKEN_KEY = 'tokenizer_dict'
 META_KEY  = 'metadata_dict'
+DIM_KEY = 'meta_embedding_dim'
 
 
 class RMN(object):
@@ -51,15 +52,16 @@ class RMN(object):
     
     def __init__(self):
         
-        # model parameters
-        self.num_topics = NUM_TOPICS
-        self.lamb = LAMBDA
-        self.gamma = GAMMA
-        
         # model attrbiutes
+        self.num_topics = NUM_TOPICS
         self.embedding_matrix = None
+        self.meta_embedding_dim = None
         self.tokenizer_dict = None
         self.metadata_dict = None
+        
+        # inference attributes
+        self.infer_embedding_matrix = None
+        self.infer_tokenizer_dict = None
         
         # models 
         self.model = None
@@ -74,13 +76,12 @@ class RMN(object):
     def topic_matrix(self):
         """Return the topic matrix associated with the rmn"""
         # dim = [num_topics, embedding_dim]
-        return self.model.get_layer('Wd').get_weights()[0].T
+        return self.model.get_layer('R').get_weights()[0]
     
     @property
     def tuned_embedding_matrix(self):
         """Return the current embedding matrix of the rmn"""
         return rmn.model.get_layer('Span.Embedding').get_weights()[0]
-          
     
     def model_loss(self):
         """Hinge loss function.
@@ -98,8 +99,8 @@ class RMN(object):
         return custom_loss
     
     
-    def build_model(self, embedding_trainable=False,
-                    gamma = 1., theta = 1., omega = 1., bias_reconstruct=True):
+    def build_model(self, embedding_trainable=False, bias_reconstruct=False,
+                    gamma = 1., theta = 1., omega = 1., lamb = 1., word_dropout = 0.5):
         """Connstruct the RMN model architecture
         """
         # Span Input
@@ -112,24 +113,27 @@ class RMN(object):
                                    trainable=embedding_trainable, 
                                    name = 'Span.Embedding')(span_input)
         
-        # Take elementwise average over vectors
-        span_avg = Lambda(lambda x: K.mean(x, axis=1), name = "Span.Avg.Layer")(span_embedding)
+        # Mask for randomly dropping words
+        dropout_mask = K.stack(
+            [K.random_binomial((span_embedding.shape[1],), p=word_dropout)]*span_embedding.shape[2], axis=1)
+        # Average over the remaining words
+        span_avg = Lambda(lambda x: K.mean(x * K.expand_dims(dropout_mask, axis=0), axis=1), 
+                          name = "Span.Avg.Layer")(span_embedding)
 
         input_layers = [span_input]
         embedding_layers = [span_avg]
         
         for col in self.metadata_dict.keys():
-            
             input_layer = Input(shape=(1,), name= col + '.Input')
             
             # embedding layer for col
             embedding_init = Embedding(
                 input_dim = self.metadata_dict[col]['input_dim'] + 1, 
-                output_dim = self.embedding_dim,
+                output_dim = self.meta_embedding_dim,
                 input_length = 1)(input_layer)
             
             # reshape
-            embedding_layer = Reshape((self.embedding_dim, ), name=col + '.Embed.Layer')(embedding_init)
+            embedding_layer = Reshape((self.meta_embedding_dim, ), name=col + '.Embed.Layer')(embedding_init)
             
             input_layers.append(input_layer)
             embedding_layers.append(embedding_layer)
@@ -154,17 +158,18 @@ class RMN(object):
                    input_shape = (self.num_topics, ),
                    activation = "linear",
                    use_bias = bias_reconstruct,
-                   kernel_regularizer = Orthogonality(self.lamb),
+                   kernel_regularizer = Orthogonality(lamb),
                    name = "R")(dt)
 
         # compile
         model = tf.keras.Model(inputs=input_layers, outputs=rt)
+        #model.compile(optimizer = OPTIMIZER, loss='mean_squared_error')
         model.compile(optimizer = OPTIMIZER, loss = self.model_loss())
         self.model = model
         
         # build associated topic model
         self.build_topic_model()
-    
+        
     
     def set_topic_vectors(self, words):
         """Set the topic vectors with vectors corresponding to the given words
@@ -297,10 +302,10 @@ class RMN(object):
         # assemble attribute dictionary
         attribute_dict = {
             N_TOP_KEY:  self.num_topics,
-            LAMB_KEY:   self.lamb,
             EMBED_KEY:  self.embedding_matrix,
             TOKEN_KEY:  self.tokenizer_dict,
-            META_KEY:   self.metadata_dict}
+            META_KEY:   self.metadata_dict, 
+            DIM_KEY:    self.meta_embedding_dim}
         
         # make directory for model
         model_path = os.path.join(save_path, RMN_TAG % name)
@@ -324,11 +329,11 @@ class RMN(object):
         attributes_dict = load_pickled_object(os.path.join(model_path, ATTR))
         
         # update attributes
-        self.num_topics       = attributes_dict[N_TOP_KEY]
-        self.lamb             = attributes_dict[LAMB_KEY]
-        self.embedding_matrix = attributes_dict[EMBED_KEY]
-        self.tokenizer_dict   = attributes_dict[TOKEN_KEY]
-        self.metadata_dict    = attributes_dict[META_KEY]
+        self.num_topics         = attributes_dict[N_TOP_KEY]
+        self.embedding_matrix   = attributes_dict[EMBED_KEY]
+        self.tokenizer_dict     = attributes_dict[TOKEN_KEY]
+        self.metadata_dict      = attributes_dict[META_KEY]
+        self.meta_embedding_dim = attributes_dict[DIM_KEY] 
         
         # construct identical model architecture
         self.build_model()
@@ -340,27 +345,38 @@ class RMN(object):
         self.build_topic_model()
         
     
-    def inspect_topics(self, which_topics=None, k_neighbors=10, tuned_embedding=False):
+    def inspect_topics(self, which_topics='all', k_neighbors=10):
         """
         Ouput the nearest neighbors of every topic vector in
         the model's topic layer
         """
-        if which_topics is None:
+        if which_topics == 'all':
             which_topics = range(self.num_topics) 
-        # get embedding matrix   
-        if tuned_embedding:
-            E = self.tuned_embedding_matrix # dim = [num_words, embedding_dim]
-        else:
-            E = self.embedding_matrix
-        Wd = self.topic_matrix  # dim = [num_topics, embedding_dim]
         
+        if (self.infer_embedding_matrix is None or 
+            self.infer_tokenizer_dict is None):
+            self.infer_embedding_matrix = self.embedding_matrix
+            self.infer_tokenizer_dict = self.tokenizer_dict
+        
+        E = self.infer_embedding_matrix # dim = [vocab_size, embedding_dim]
+        R = self.topic_matrix          # dim = [num_topics, embedding_dim]
+        
+        # topics nearest neighbors
+        topics_nn = []
         for i in which_topics:
             # find nearest neighbors to topic
-            neighbors, sim = find_nn_cos(Wd[i], E, k_neighbors)
-            words = [self.tokenizer_dict['tokenizer'].index_word[v] for v in neighbors]
+            neighbors, sim = find_nn_cos(R[i], E, k_neighbors)
+            words = [self.infer_tokenizer_dict['tokenizer'].index_word[v] for v in neighbors]
+            
+            # update
+            topics_nn.append(list(zip(words, np.array(sim).round(3))))
+            
+            # report
             print(20*"=" +"\n")
             print("Topic", i)
             print(words)
+        
+        return topics_nn
     
     
 # Orthogonality Regularizer #
@@ -391,17 +407,28 @@ class Orthogonality(Regularizer):
 class Purity(Regularizer):
     """Regularizer for penalizing highly impure probability distributions
     """
-    def __init__(self, gamma = 1., theta = 1., omega = 1.):
+    def __init__(self, gamma = 1., theta = 1., omega = 1., entr=True, epsilon = 1e-10):
         self.gamma = gamma
         self.theta = theta
         self.omega = omega
+        self.entr = entr
+        self.epsilon = epsilon
 
     def __call__(self, p):
         """Returns the avergage shannon entropy of the distribution(s) p
         """
-        impurity = K.sum(p*-K.log(p)/K.log(K.constant(2)), axis=-1)
+        # calculate impurity
+        if self.entr:
+            impurity = K.sum(p*-K.log(p+self.epsilon)/K.log(K.constant(2)), axis=-1)
+        else: 
+            # Gini impurity    
+            impurity = 1.-K.sum(p*(1-p), axis=-1)
         concentration = K.max(p, axis=-1)
-        similarity = K.mean(K.dot(p, K.transpose(p)))
+        
+        # calculate batch similarity
+        ppt = K.dot(p, K.transpose(p)) 
+        similarity = K.mean(K.sum(ppt) - K.sum(tf.linalg.diag_part(ppt)))
+        
         
         penalty = (self.gamma * K.mean(impurity) + 
                    self.theta * K.mean(concentration) + 
@@ -409,3 +436,103 @@ class Purity(Regularizer):
         
         return penalty
     
+    
+    
+# RMN child for training on Data Generators #
+
+class RigidRMN(RMN):
+    """
+    A Derivative of the RMN class for training with a generator
+    
+    This version does not use an embedding for the span input
+    """
+    
+    
+    
+    def __init__(self, dropout=0.5):
+        RMN.__init__(self)
+        self.dropout = dropout
+    
+    def build_model(self, embedding_trainable=False, bias_reconstruct=False,
+                    gamma = 1., theta = 1., omega = 1., lamb = 1.):
+        """Connstruct the RMN model architecture
+        """
+        # Span Input
+        span_input = Input(shape=(self.embedding_dim,), name='Span.Input')
+
+        input_layers = [span_input]
+        embedding_layers = [span_input]
+        
+        for col in self.metadata_dict.keys():
+            input_layer = Input(shape=(1,), name= col + '.Input')
+            
+            # embedding layer for col
+            embedding_init = Embedding(
+                input_dim = self.metadata_dict[col]['input_dim'] + 1, 
+                output_dim = self.meta_embedding_dim,
+                input_length = 1)(input_layer)
+            
+            # reshape
+            embedding_layer = Reshape((self.meta_embedding_dim, ), name=col + '.Embed.Layer')(embedding_init)
+            
+            input_layers.append(input_layer)
+            embedding_layers.append(embedding_layer)
+
+        # concatenate span vector with metadata embeddings
+        _ht = Concatenate(axis=1, name = 'Concat.Layer')(embedding_layers)
+
+        # dense layer
+        ht = Dense(units = self.embedding_dim, 
+                   input_shape = (_ht.shape[1], ), 
+                   activation = "relu", name = "Wh")(_ht)
+
+        # dense layer whose output is a probability distribution
+        dt = Dense(units = self.num_topics, 
+                   input_shape = (self.embedding_dim, ), 
+                   activation = "softmax",
+                   activity_regularizer = Purity(gamma, theta, omega),
+                   name = "Wd")(ht)
+
+        # reconstruction layer
+        rt = Dense(units = self.embedding_dim,
+                   input_shape = (self.num_topics, ),
+                   activation = "linear",
+                   use_bias = bias_reconstruct,
+                   kernel_regularizer = Orthogonality(lamb),
+                   name = "R")(dt)
+
+        # compile
+        model = tf.keras.Model(inputs=input_layers, outputs=rt)
+        model.compile(optimizer = OPTIMIZER, loss='mean_squared_error')
+        #model.compile(optimizer = OPTIMIZER, loss = self.model_loss())
+        self.model = model
+        
+        # build associated topic model
+        self.build_topic_model()
+        
+    def prep_spans(self, documents, for_training):
+        """Returns the lists of word ids associated with the text
+        """
+        spans_y = self.tokenizer_dict['tokenize_pad'](documents)
+        if for_training:
+            spans_y = spans_y * np.random.binomial(1, self.dropout, spans_y.shape)
+            
+        y = self.embedding_matrix[spans_y].mean(axis=1)
+        #y = y / np.linalg.norm(y, axis=-1)[:, np.newaxis]
+        
+        return y.astype(np.float16)
+        
+    
+    def prep_X(self, df, for_training=False):
+        """Preps metadata and spans for training or prediction
+        """
+        vectors_y = self.prep_spans(df['document'], for_training)
+        metadata_x = self.prep_metadata(df)
+        X = [vectors_y] + metadata_x
+        
+        if for_training:
+            return X, X[0]
+        else:
+            return X
+        
+        

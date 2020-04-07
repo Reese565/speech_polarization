@@ -1,4 +1,4 @@
-#====================#
+#=======#====================#
 #=*= RMN Analyzer =*=#
 #====================#
 
@@ -19,7 +19,10 @@ D = 'D'
 # metric constants
 JS = 'js'
 HH = 'hh'
+EN = 'entr'
 N_REC = 'n_records'
+N_NAN = 'n_nan_preds'
+TP = 'topic_use'
 
 
 class RMN_Analyzer(object):
@@ -106,6 +109,13 @@ class RMN_Analyzer(object):
         return len(self.cond_index(conditions))
     
     
+    def n_nan_preds(self, conditions={}):
+        """Returns the number of records which have nan predictions
+        """
+        cond_index = self.cond_index(conditions)
+        return np.isnan(self.topic_preds[cond_index].sum(axis=-1)).sum().item()
+    
+    
     def compute_JS(self, index_A, index_B, base=2):
         """
         Computes the mean pair-wise JS divergence and associated CI
@@ -127,7 +137,22 @@ class RMN_Analyzer(object):
         hh_list = [hh_index(q) for q in p]
         
         return mean_CI(hh_list)
-          
+    
+    
+    def topic_use_RD_js(self, conditions={}):
+        """Returns the JS divergence of the R and D topic use distributions
+        """
+        R_topic_use = self.topic_use({**conditions, **{PARTY: R}})
+        D_topic_use = self.topic_use({**conditions, **{PARTY: D}})
+        
+        return jensenshannon(R_topic_use, D_topic_use)
+    
+    
+    def topic_use_hh(self, conditions={}):
+        """Returns the HH-index of the RD topic use distributions
+        """
+        return hh_index(self.topic_use(conditions))
+    
     
     def inter_party_js(self, conditions, n):
         """
@@ -277,12 +302,15 @@ class RMN_Analyzer(object):
         _R = '_' + R
         _D = '_' + D
         _RD = _R + D
+        _TP = '_' + TP
         
         metrics = {
-            # n record data
+            # n records in data
             N_REC:    self.n_records(conditions),
             N_REC+_R: self.n_records(conditions_R),
             N_REC+_D: self.n_records(conditions_D),
+            N_NAN+_R: self.n_nan_preds(conditions_R),
+            N_NAN+_D: self.n_nan_preds(conditions_D),
             # JS divergence data
             JS:     self.group_js(conditions, n),
             JS+_R:  self.group_js(conditions_R, n),
@@ -291,7 +319,12 @@ class RMN_Analyzer(object):
             # HH index data
             HH:    self.group_hh(conditions, n),
             HH+_R: self.group_hh(conditions_R, n),
-            HH+_D: self.group_hh(conditions_D, n)
+            HH+_D: self.group_hh(conditions_D, n),
+            # Topic Use Metrics
+            HH+_TP:    self.topic_use_hh(conditions),
+            HH+_TP+_R: self.topic_use_hh(conditions_R),
+            HH+_TP+_D: self.topic_use_hh(conditions_D),
+            JS+_TP:    self.topic_use_RD_js(conditions),
         }
         
         return metrics
@@ -323,15 +356,21 @@ class RMN_Analyzer(object):
         return metrics
     
     
-    def shannon_entropy(self):
-        """Returns the Shannon Entropy of every topic prediction
+    def shannon_entropy(self, conditions={}):
+        """Returns the Shannon Entropy of topic predictions meeting conditions
         """
         # ensure that the topic predictions exist
         if self.topic_preds is None:
             self.predict_topics()
         
-        return shannon_entropy(self.topic_preds)
+        return shannon_entropy(self.topic_preds[self.cond_index(conditions)])
     
+    
+    def mean_entropy(self, conditions={}):
+        """Returns the mean entropy of topic predictions meeting condiditons
+        """
+        return np.nanmean(self.shannon_entropy(conditions))
+        
     
     def first_topic_counts(self, conditions={}):
         """
@@ -353,7 +392,7 @@ class RMN_Analyzer(object):
         total weight given to them in all of the documents
         """
         cond_index = self.cond_index(conditions)
-        topic_sums = pd.Series(np.sum(self.topic_preds[cond_index], axis=0))
+        topic_sums = pd.Series(np.nansum(self.topic_preds[cond_index], axis=0))
         topic_use = topic_sums.sort_values(ascending=False) / topic_sums.sum()
         
         return topic_use
@@ -366,6 +405,4 @@ class RMN_Analyzer(object):
         primary_topics = np.flip(np.argsort(self.topic_preds[cond_index]))[:,:k]
         
         return primary_topics
-    
-    
     
