@@ -14,20 +14,25 @@ from functools import partial
 sys.path.append("/home/rocassius/w266_final/scripts/assembly")
 sys.path.append("/home/rocassius/w266_final/scripts/modeling")
 
-from constant import DOC_ALL_PATH, MIN_SESSION, MAX_SESSION
+from constant import DOC_PRAYER_PATH, MIN_SESSION, MAX_SESSION
 from document import load_documents
 from subject import subject_keywords
 
-from rmn import RMN
+from rmn import *
 from rmn_analyzer import *
 
 # constants
-RMN_NAME = "full"
+RMN_NAME = "SuaveRanger"
 RMN_PATH = "/home/rocassius/gen-data/models"
-SAVE_PATH = '/home/rocassius/gen-data/data/div-first'
+SAVE_PATH = '/home/rocassius/gen-data/data/div-second'
 DIV_TAG = 'div_data_%s.txt'
 
+
 sessions = list(range(MIN_SESSION, MAX_SESSION+1))
+sample_n = 5000
+
+sessions = [78,90,100]
+sample_n = 100
 
 def analyze_session(session, subjects, sample_n, doc_path, rmn):
     
@@ -56,14 +61,14 @@ def main():
     start = time.time()
     
     # make rmn
-    rmn = RMN(); rmn.load_rmn(name=RMN_NAME, save_path=RMN_PATH)
+    rmn = RigidRMN(); rmn.load_rmn(name=RMN_NAME, save_path=RMN_PATH)
     
     # declare analyzing function
     analyze_func = partial(
         analyze_session, 
         subjects=subject_keywords.keys(), 
-        sample_n=1000, 
-        doc_path=DOC_ALL_PATH,
+        sample_n=sample_n, 
+        doc_path=DOC_PRAYER_PATH,
         rmn=rmn)
     
     # gather data

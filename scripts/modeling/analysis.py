@@ -41,8 +41,10 @@ def hh_index(p):
     return hhi
 
 
+epsilon = 1e-10
 def shannon_entropy(p):
-    return np.sum(p*-np.log2(p), axis=-1)
+    p = np.asarray(p)
+    return np.sum(p*-np.log2(p+epsilon), axis=-1)
 
 
 def mean_CI(x, as_dict=True):
@@ -52,6 +54,8 @@ def mean_CI(x, as_dict=True):
     - 1, the 95% lower CI bound
     - 2, the 95% upper CI bound
     """
+    # handle nan values
+    x = np.array(x)[~np.isnan(x)]
     mean = np.mean(x)
     CI = sms.DescrStatsW(x).tconfint_mean()
     mean_ci = np.array((mean,) + CI)
