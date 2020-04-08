@@ -42,12 +42,16 @@ class RMN_Analyzer(object):
         self.topic_preds = None
         self.y_preds = None
         
+        self.topic_nns = None
+        self.topic_coherence = None
+        
+        
     @property
     def index(self):
         return self.df.index
-         
         
-    def predict_topics(self, use_generator=True):
+    
+    def predict_topics(self, use_generator=False):
         """Computes the topic predictions for all observations
         """
         self.topic_preds = self.rmn.predict_topics(self.df, use_generator)
@@ -402,7 +406,29 @@ class RMN_Analyzer(object):
         """Returns top k most prominent topics for documents
         """
         cond_index = self.cond_index(conditions)
-        primary_topics = np.flip(np.argsort(self.topic_preds[cond_index]))[:,:k]
+        primary_topics = np.flip(np.argsort(self.topic_preds[cond_index]), axis=-1)[:,:k]
         
         return primary_topics
     
+    
+    def find_topic_nns(self):
+        """Finds the nearest neighbors of the rmn's topics
+        """
+        self.topic_nns = np.array(rmn.inspect_topics())
+      
+    
+    def find_topic_coherence(self, k=5):
+        """Updates the topic coherence scores of the 
+        """
+        W = self.rmn.infer_embedding_matrix
+        word_index = self.rmn.infer_tokenizer_dict['word_index']
+        coherence_scores = [word_coherence(np.array(t)[:5,0], word_index, W) 
+                            for t in self.topic_nns]
+        
+        self.topic_coherence = pd.Series(coherence_scores).sort_values(ascending=False)
+        
+    
+    @property
+    def topic_nn_sim(self):
+        return pd.Series(self.topic_nns[:,0,1]).sort_values(ascending=False)
+        
