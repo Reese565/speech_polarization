@@ -67,3 +67,36 @@ def mean_CI(x, as_dict=True):
     else:
         return mean_ci
 
+
+    
+def mean_pair_similarity(vectors):
+    
+    n_vec = vectors.shape[0]
+    index_A = np.tile(range(n_vec), n_vec)
+    index_B = np.repeat(range(n_vec), n_vec)
+    
+    v_A, v_B = vectors[index_A], vectors[index_B]
+    norm = (np.linalg.norm(v_A, axis=1) * 
+            np.linalg.norm(v_B, axis=1))
+    sim = (v_A * v_B).sum(axis=1) / norm
+    
+    coherence = (sim.sum() - n_vec) / (n_vec**2 - n_vec)
+    
+    return coherence
+    
+    
+def vector_coherence(index, W):    
+    return mean_pair_similarity(W[index])
+    
+
+def word_coherence(words, word_index, W):
+    return vector_coherence([word_index[w] for w in words], W)
+
+
+def random_coherence(k, W):
+    
+    v = np.random.uniform(low=-1., high=1., size=W.shape[1])
+    nn, sim = find_nn_cos(v, W, k)    
+    nn_coherence = vector_coherence(nn, W)
+    
+    return nn_coherence    
