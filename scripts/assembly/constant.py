@@ -19,6 +19,7 @@ DOC_ALL_PATH = os.path.join(DOC_PATH, "doc-all/")
 DOC_PROPER_PATH = os.path.join(DOC_PATH, "doc-proper/")
 DOC_SAMPLE_PATH = os.path.join(DOC_PATH, "doc-sample/")
 DOC_PRAYER_PATH = os.path.join(DOC_PATH, "doc-prayer/")
+DOC_GEN_PATH = os.path.join(DOC_PATH, "doc-generic/")
 
 TOOLS_PATH = os.path.join(GEN_DATA_PATH, "tools/")
 MODEL_PATH = os.path.join(GEN_DATA_PATH, "models/")

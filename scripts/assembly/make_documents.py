@@ -37,7 +37,7 @@ def main():
         window_tokens=WINDOW_TOKENS)
     
     # execute in parallel
-    with ProcessPoolExecutor(max_workers = N_CORES) as executor:
+    with ThreadPoolExecutor(max_workers = N_CORES) as executor:
         executor.map(document_maker, sessions)  
 
     end = time.time()
