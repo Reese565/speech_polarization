@@ -153,6 +153,60 @@ def steps_to_space(d):
     return steps
   
     
+# Function for getting generic documents from a session
+MIN_LENGTH = 200
+DOC_LENGTH = 200
+EDGE_SIZE = 100
+
+
+def docs_from_speech(speech, min_length, doc_length, edge_size):
+    
+    words = speech.split()[:-edge_size]
+    if len(words) < min_length:
+        return []
+    
+    docs = [" ".join(words[i*doc_length:(i+1)*doc_length]) 
+            for i in range(len(words) // doc_length)]
+    
+    return docs
+
+
+def documents_from_session(
+    session, 
+    speech_path, 
+    min_length=MIN_LENGTH, 
+    doc_length=DOC_LENGTH, 
+    edge_size=EDGE_SIZE):
+    
+    # load session
+    session_str = format(session, '03d') 
+    speeches = pd.read_csv(os.path.join(speech_path, SPEECHES % session_str), sep = "|", skiprows=[350331])
+    speaker_map = pd.read_csv(os.path.join(HB_PATH, SPEAKER_MAP % session_str), sep = "|")
+
+    # func: speech -> List(str)
+    doc_list = partial(docs_from_speech, 
+                       min_length=min_length,
+                       doc_length=doc_length, 
+                       edge_size=edge_size)
+    
+    # make documents
+    speeches['speech'] = speeches['speech'].map(doc_list)
+    speeches.rename(columns={'speech':'document'}, inplace=True)
+    
+    # merge with speaker metadata
+    documents = (speaker_map[speaker_info_cols + ["speech_id"]]
+                 .merge(speeches, on='speech_id', how='right')
+                 .drop('speech_id', axis=1)
+                 .explode('document')
+                 .dropna())
+    
+    # correct type
+    documents['speakerid'] = documents['speakerid'].astype(int)
+
+    return documents
+    
+    
+    
 #=*= Functions for loading documents =*=#  
     
 def load_documents(subjects, read_path):
@@ -184,3 +238,22 @@ def load_documents(sessions, read_path):
     return df
     
     
+def load_generic_documents(sessions, read_path):
+    """
+    Returns a dataframe of documents belonging to the given sessions
+    """
+    # load data
+    session_strs = [format(s, '03d') for s in sessions]
+    df_list = []
+    for s in session_strs:
+        sess_df = pd.read_csv(os.path.join(read_path, DOCUMENT % s), sep = "|")
+        sess_df['session'] = int(s)
+        df_list.append(sess_df)
+    
+    df = pd.concat(df_list)
+    
+    # correct certain types
+    df['speakerid'] = df['speakerid'].astype(int).astype(str)
+    df['session'] = df['session'].astype(str)
+    
+    return df    

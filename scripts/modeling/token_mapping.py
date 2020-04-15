@@ -14,11 +14,11 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 MAX_TOKENS = 20
 
 
-def tokenize_pad(documents, tokenizer, max_span_len):
+def tokenize_pad(documents, tokenizer, max_span_len, padding="post"):
     """Tokenize and pad documents using a tokenizer
     """
     tokenized = tokenizer.texts_to_sequences(documents)
-    padded = pad_sequences(tokenized, maxlen=max_span_len, padding = "post")
+    padded = pad_sequences(tokenized, maxlen=max_span_len, padding=padding)
     
     return padded
 

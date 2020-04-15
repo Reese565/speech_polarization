@@ -13,6 +13,7 @@ SUB = 'subject'
 SPEAK = 'speakerid'
 PARTY = 'party'
 SESS = 'session'
+TOPIC = 'topic'
 # party constants
 R = 'R'
 D = 'D'
@@ -22,7 +23,9 @@ HH = 'hh'
 EN = 'entr'
 N_REC = 'n_records'
 N_NAN = 'n_nan_preds'
+
 TP = 'topic_use'
+PL = 'placebo'
 
 
 class RMN_Analyzer(object):
@@ -51,10 +54,19 @@ class RMN_Analyzer(object):
         return self.df.index
         
     
-    def predict_topics(self, use_generator=False):
+    def predict_topics(self, use_generator=False, k_primary_topics=5):
         """Computes the topic predictions for all observations
         """
+        # predict topics
         self.topic_preds = self.rmn.predict_topics(self.df, use_generator)
+        
+        # dataframe of first k topics for each record
+        primary_topics = self.primary_topics({}, k_primary_topics)
+        primary_cols = [TOPIC + str(i) for i in range(1, k_primary_topics+1)]
+        primary_df = pd.DataFrame(primary_topics, columns=primary_cols)
+        
+        # update analyzer dataframe
+        self.df = self.df.join(primary_df)
         
     
     def predict_y(self, use_generator=True):
@@ -120,13 +132,14 @@ class RMN_Analyzer(object):
         return np.isnan(self.topic_preds[cond_index].sum(axis=-1)).sum().item()
     
     
-    def compute_JS(self, index_A, index_B, base=2):
+    def compute_JS(self, index_A, index_B, omit_topics=[], base=2):
         """
         Computes the mean pair-wise JS divergence and associated CI
         between indices in index_A and indices in index_B
         """
-        p_A = self.topic_preds[index_A]
-        p_B = self.topic_preds[index_B]
+        p_A = np.delete(self.topic_preds[index_A], omit_topics, axis=-1)
+        p_B = np.delete(self.topic_preds[index_B], omit_topics, axis=-1)
+        print(p_B.shape)
         js_list = [jensenshannon(p, q, base) for p, q in zip(p_A, p_B)]
         
         return mean_CI(js_list)
@@ -152,13 +165,34 @@ class RMN_Analyzer(object):
         return jensenshannon(R_topic_use, D_topic_use)
     
     
+    def topic_use_placebo_js(self, conditions={}, n=20):
+        """Returns a placebo JS divergence of the R and D topic use distributions
+        """
+        # get original parties
+        cond_index = self.cond_index(conditions)
+        party = self.df.loc[cond_index][PARTY]
+        
+        js_list = []
+        for _ in range(n):
+            # permute party labels
+            self.df[PARTY][cond_index] = np.random.permutation(party)
+            # compute associated js
+            js = self.topic_use_RD_js(conditions)
+            js_list.append(js)
+        
+        # restore party labels
+        self.df[PARTY][cond_index] = party
+        
+        return mean_CI(js_list)
+        
+    
     def topic_use_hh(self, conditions={}):
         """Returns the HH-index of the RD topic use distributions
         """
         return hh_index(self.topic_use(conditions))
     
     
-    def inter_party_js(self, conditions, n):
+    def inter_party_js(self, conditions, n, omit_topics=[]):
         """
         Returns the estimated inter party JS divergence and a CI.
         
@@ -190,10 +224,10 @@ class RMN_Analyzer(object):
         samp_index_R = self.sample_indices(index_R, n)
         samp_index_D = self.sample_indices(index_D, n)
     
-        return self.compute_JS(samp_index_R, samp_index_D)
+        return self.compute_JS(samp_index_R, samp_index_D, omit_topics)
     
     
-    def group_js(self, conditions, n):
+    def group_js(self, conditions, n, omit_topics=[]):
         """
         Returns the estimated mean JS divergence and a CI
         
@@ -236,7 +270,7 @@ class RMN_Analyzer(object):
         # get indices for each group
         index_A, index_B = index_AB[:,0], index_AB[:,1]
         
-        return self.compute_JS(index_A, index_B)
+        return self.compute_JS(index_A, index_B, omit_topics)
     
     
     def group_hh(self, conditions={}, n=None):
@@ -274,7 +308,7 @@ class RMN_Analyzer(object):
             return self.compute_HH(samp_index)
         
         
-    def analyze_subset(self, conditions, n):
+    def analyze_subset(self, conditions, n=30):
         """
         Returns a dictionary of analysis metrics for the subset 
         of records defined by the conditions.
@@ -286,15 +320,13 @@ class RMN_Analyzer(object):
         - n         : (int) sample size for estimation of metrics
         
         for the entire dataset and for each subject the following are computed:
-        - n_records, n_records_R
-        - n_records_D
-        - js
-        - js_R
-        - js_D
-        - js_RD
+        - n_records for all, R, D
+        - n_nan_records for R, D
         - hh
         - hh_R
         - hh_D
+        - js_placebo
+        - js_RD
         
         Returns: a dictionary of metrics
         """
@@ -306,7 +338,7 @@ class RMN_Analyzer(object):
         _R = '_' + R
         _D = '_' + D
         _RD = _R + D
-        _TP = '_' + TP
+        _PL = '_'+ PL
         
         metrics = {
             # n records in data
@@ -315,34 +347,31 @@ class RMN_Analyzer(object):
             N_REC+_D: self.n_records(conditions_D),
             N_NAN+_R: self.n_nan_preds(conditions_R),
             N_NAN+_D: self.n_nan_preds(conditions_D),
-            # JS divergence data
-            JS:     self.group_js(conditions, n),
-            JS+_R:  self.group_js(conditions_R, n),
-            JS+_D:  self.group_js(conditions_D, n),
-            JS+_RD: self.inter_party_js(conditions, n),
-            # HH index data
-            HH:    self.group_hh(conditions, n),
-            HH+_R: self.group_hh(conditions_R, n),
-            HH+_D: self.group_hh(conditions_D, n),
-            # Topic Use Metrics
-            HH+_TP:    self.topic_use_hh(conditions),
-            HH+_TP+_R: self.topic_use_hh(conditions_R),
-            HH+_TP+_D: self.topic_use_hh(conditions_D),
-            JS+_TP:    self.topic_use_RD_js(conditions),
+            # HH Topic Use Metrics
+            HH:     self.topic_use_hh(conditions),
+            HH+_R:  self.topic_use_hh(conditions_R),
+            HH+_D:  self.topic_use_hh(conditions_D),
+            # JS Topic Use Metrics
+            JS+_RD: self.topic_use_RD_js(conditions),
+            JS+_PL: self.topic_use_placebo_js(conditions, n),
+            # Top Use Metrics
+            TP:    self.topic_use(conditions, as_tuples=True),
+            TP+_R: self.topic_use(conditions_R, as_tuples=True),
+            TP+_D: self.topic_use(conditions_D, as_tuples=True)
         }
         
-        return metrics
+        return metrics        
+        
     
         
-    def analyze(self, subjects, n):
+    def analyze(self, n):
         """
         Returns a dictionary of analysis metrics at the subject level
         and at the session level (assuming self.df is the data of a
         single session).
         
         Args:
-        - subjects: (array-like) list of subjects
-        - n       : (int) sample size for estimation of metrics
+        - n: (int) sample size for estimation of metrics
         
         Returns: a dictionary of metrics
         """
@@ -350,12 +379,12 @@ class RMN_Analyzer(object):
         dataset_metrics = self.analyze_subset(conditions={}, n=n)
         
         # analyze by subject
-        subject_metrics = {}
-        for s in subjects:
-            subject_metrics[s] = self.analyze_subset({SUB: s}, n)
+        topic_metrics = {}
+        for t in range(self.rmn.num_topics):
+            topic_metrics[t] = self.analyze_subset({TOPIC+str(1): t}, n)
         
-        metrics = {'dataset' : dataset_metrics, 
-                   'subjects': subject_metrics}
+        metrics = {'dataset': dataset_metrics, 
+                   'topics' : topic_metrics}
         
         return metrics
     
@@ -390,7 +419,7 @@ class RMN_Analyzer(object):
         return topic_counts
     
     
-    def topic_use(self, conditions={}):
+    def topic_use(self, conditions={}, as_tuples=False):
         """
         Returns a leaderboard of topics based on the percentage of 
         total weight given to them in all of the documents
@@ -399,7 +428,10 @@ class RMN_Analyzer(object):
         topic_sums = pd.Series(np.nansum(self.topic_preds[cond_index], axis=0))
         topic_use = topic_sums.sort_values(ascending=False) / topic_sums.sum()
         
-        return topic_use
+        if not as_tuples:
+            return topic_use
+        else:
+            return list(topic_use.iteritems())
     
     
     def primary_topics(self, conditions={}, k=5):
@@ -414,7 +446,7 @@ class RMN_Analyzer(object):
     def find_topic_nns(self):
         """Finds the nearest neighbors of the rmn's topics
         """
-        self.topic_nns = np.array(rmn.inspect_topics())
+        self.topic_nns = np.array(self.rmn.inspect_topics())
       
     
     def find_topic_coherence(self, k=5):
@@ -426,9 +458,28 @@ class RMN_Analyzer(object):
                             for t in self.topic_nns]
         
         self.topic_coherence = pd.Series(coherence_scores).sort_values(ascending=False)
-        
     
     @property
     def topic_nn_sim(self):
         return pd.Series(self.topic_nns[:,0,1]).sort_values(ascending=False)
+    
+    
+    def sample_records(self, conditions, n=10):
+    
+        samp_index = self.cond_index(conditions)
+        if len(samp_index) > n:
+            samp_index = np.random.choice(samp_index, n)
+            
+        self.show_records(samp_index)
+    
+    
+    def show_records(self, index):
+        
+        for rec in self.df.loc[index].itertuples():
+            print(30*'=')
+            print('SPEAKER:', rec.firstname, rec.lastname)
+            print('PARTY:  ', rec.party)
+            print('\n', rec.document, '\n')
+            print('PRIMARY TOPICS:', rec.t1, rec.t2, rec.t3, rec.t4, rec.t5, '\n')
+        
         
