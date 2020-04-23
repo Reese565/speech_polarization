@@ -10,3 +10,8 @@ We take a deep learning approach to measuing political polarization in the Unite
 
 We implement a neural architecture similar to the Relationship Modeling Network (RMN) put forward bby Iyyer et al. [(2016)](https://www.aclweb.org/anthology/N16-1180/). The code used to implement our unique variant of the RMN is [here](https://github.com/Reese565/speech_polarization/blob/master/scripts/modeling/rmn.py).
 
+
+## Authors
+Maurice Williams & Rowan Cassius
+
+*Contact:* `{reese565, rocassius}@ischool.berkeley.edu`
