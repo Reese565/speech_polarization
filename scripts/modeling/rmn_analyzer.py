@@ -139,7 +139,6 @@ class RMN_Analyzer(object):
         """
         p_A = np.delete(self.topic_preds[index_A], omit_topics, axis=-1)
         p_B = np.delete(self.topic_preds[index_B], omit_topics, axis=-1)
-        print(p_B.shape)
         js_list = [jensenshannon(p, q, base) for p, q in zip(p_A, p_B)]
         
         return mean_CI(js_list)
