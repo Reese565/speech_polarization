@@ -4,9 +4,6 @@
 
 # RMN Class for training Relationship Modeling Networks 
 
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
-
 import os
 import numpy as np
 
