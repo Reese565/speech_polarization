@@ -2,7 +2,7 @@
 #=*= RMN Module =*=#
 #==================#
 
-# RMN Class for training Relationship Modeling Networks 
+# Variant of the original RMN (Iyyer et al. 2016)
 
 import os
 import numpy as np
